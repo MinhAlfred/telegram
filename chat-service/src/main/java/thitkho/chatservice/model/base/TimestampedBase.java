@@ -1,0 +1,28 @@
+/**
+ * Copyright (c) 2025 Bit Learning. All rights reserved.
+ * This software is the confidential and proprietary information of Bit Learning.
+ * You shall not disclose such confidential information and shall use it only in
+ * accordance with the terms of the license agreement you entered into with Bit Learning.
+ */
+package capstone.bitlearning.common.entities;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.persistence.Column;
+import jakarta.persistence.MappedSuperclass;
+import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.springframework.data.annotation.LastModifiedDate;
+
+@MappedSuperclass
+@Getter
+@NoArgsConstructor
+public abstract class TimestampedBase extends CreatedAtBase {
+    @Column(nullable = false)
+    @LastModifiedDate
+    @Setter(AccessLevel.NONE)
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "Asia/Ho_Chi_Minh")
+    private LocalDateTime updatedAt;
+}
