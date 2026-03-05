@@ -1,4 +1,3 @@
 package thitkho.chatservice.model.enums;
 
-public enum RoomType {
-}
+public enum RoomType   { DIRECT, GROUP }

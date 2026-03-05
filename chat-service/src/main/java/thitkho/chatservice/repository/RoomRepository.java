@@ -1,4 +1,48 @@
 package thitkho.chatservice.repository;
 
-public interface RoomRepository {
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import thitkho.chatservice.model.Room;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface RoomRepository extends JpaRepository<Room, String> {
+    List<Room> findByCreatedBy(String userId);
+    @Query(value = """
+    SELECT r.* FROM rooms r
+    JOIN room_members m1 ON r.id = m1.room_id
+    JOIN room_members m2 ON r.id = m2.room_id
+    WHERE m1.user_id = :userId1 
+      AND m2.user_id = :userId2 
+      AND r.type = 'DIRECT' 
+    LIMIT 1
+    """, nativeQuery = true)
+    Optional<Room> findPrivateRoom(String userId1, String userId2);
+
+    @Query("SELECT r FROM Room r JOIN RoomMember rm ON r.id = rm.roomId " +
+            "WHERE rm.userId = :userId AND r.isActive = true " +
+            "ORDER BY r.lastMessageAt DESC") // Sắp xếp phòng có tin nhắn mới lên đầu
+    Page<Room> findRoomsByUserId(@Param("userId") String userId, Pageable pageable);
+
+    @Query("""
+    SELECT r FROM Room r
+    JOIN RoomMember rm ON rm.roomId = r.id
+    WHERE rm.userId = :userId
+    AND r.isActive = true
+    AND (:cursor IS NULL OR r.lastMessageAt < :cursor)
+    ORDER BY r.lastMessageAt DESC
+    LIMIT :limit
+    """)
+    List<Room> findRoomsByUserIdWithCursor(
+            @Param("userId") String userId,
+            @Param("cursor") LocalDateTime cursor,
+            @Param("limit") int limit
+    );
 }

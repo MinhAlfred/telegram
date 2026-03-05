@@ -1,4 +1,21 @@
 package thitkho.chatservice.repository;
 
-public interface RoomMemberRepository {
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import thitkho.chatservice.model.RoomMember;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface RoomMemberRepository extends JpaRepository<RoomMember, String> {
+    Page<RoomMember> findByUserId(String userId, Pageable pageable);
+    Page<RoomMember> findByRoomId(String roomId, Pageable pageable);
+    List<RoomMember> findByRoomId(String roomId);
+    Optional<RoomMember> findByRoomIdAndUserId(String roomId, String userId);
+    boolean existsByRoomIdAndUserId(String roomId, String userId);
+    List<RoomMember> findAllByRoomIdIn(List<String> roomIds);
+    void deleteByRoomIdAndUserId(String roomId, String userId);
 }

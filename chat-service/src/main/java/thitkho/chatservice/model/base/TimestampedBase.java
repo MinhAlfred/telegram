@@ -4,17 +4,18 @@
  * You shall not disclose such confidential information and shall use it only in
  * accordance with the terms of the license agreement you entered into with Bit Learning.
  */
-package capstone.bitlearning.common.entities;
+package thitkho.chatservice.model.base;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
-import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.LastModifiedDate;
+
+import java.time.LocalDateTime;
 
 @MappedSuperclass
 @Getter

@@ -1,4 +1,3 @@
 package thitkho.chatservice.model.enums;
 
-public enum MemberRole {
-}
+public enum MemberRole { OWNER, ADMIN, MEMBER }
