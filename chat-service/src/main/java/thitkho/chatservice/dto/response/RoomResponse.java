@@ -1,9 +1,10 @@
 package thitkho.chatservice.dto.response;
 
+import lombok.Builder;
 import thitkho.chatservice.model.enums.RoomType;
 
 import java.time.LocalDateTime;
-
+@Builder
 public record RoomResponse(
         String id,
         String name,

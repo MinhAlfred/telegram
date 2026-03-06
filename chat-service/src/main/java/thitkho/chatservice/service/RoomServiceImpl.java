@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import thitkho.chatservice.annotation.RequireRoomMember;
 import thitkho.chatservice.client.UserClient;
+import thitkho.chatservice.dto.mapper.RoomMapper;
 import thitkho.chatservice.dto.request.CreateRoomRequest;
 import thitkho.chatservice.dto.request.UpdateRoomRequest;
 import thitkho.chatservice.dto.response.RoomResponse;
@@ -33,6 +34,7 @@ public class RoomServiceImpl implements  RoomService {
     private final RoomMemberRepository roomMemberRepository;
     private final MessageRepository messageRepository;
     private final UserClient userClient;
+    private final RoomMapper roomMapper;
 
     @Override
     @Transactional
@@ -43,12 +45,12 @@ public class RoomServiceImpl implements  RoomService {
                     int unread = roomMemberRepository.findByRoomIdAndUserId(room.getId(), userId)
                             .map(RoomMember::getUnreadCount)
                             .orElse(0);
-                    return buildDirectRoomResponse(room, targetUserInfo, unread);
+                    return roomMapper.toDirectRoomResponse(room, targetUserInfo, unread);
                 })
                 .orElseGet(() -> {
                     Room room = createBaseRoom(targetUserInfo.displayName(), RoomType.DIRECT, userId);
                     saveMembers(room.getId(), List.of(userId, targetUserId), false);
-                    return buildDirectRoomResponse(room, targetUserInfo,0);
+                    return roomMapper.toDirectRoomResponse(room, targetUserInfo,0);
                 });
     }
 
@@ -59,7 +61,7 @@ public class RoomServiceImpl implements  RoomService {
         Room room = createBaseRoom(request.name(), RoomType.GROUP, userId);
         saveMembers(room.getId(), List.of(userId), true); // owner
         saveMembers(room.getId(), request.memberIds(), false); // members
-        return buildGroupRoomResponse(room, userInfo,0);
+        return roomMapper.toGroupRoomResponse(room, userInfo,0);
     }
 
     @Override
@@ -76,13 +78,13 @@ public class RoomServiceImpl implements  RoomService {
                         .findFirst()
                         .orElse(userId);
                 UserInfoChatResponse targetInfo = userClient.getUserById(targetUserId);
-                return buildDirectRoomResponse(room, targetInfo,me.getUnreadCount());
+                return roomMapper.toDirectRoomResponse(room, targetInfo,me.getUnreadCount());
             }
             UserInfoChatResponse user = userClient.getUserById(room.getLastMessageSenderId());
             if(user == null){
                 throw new AppException(RoomErrorCode.ROOM_NOT_FOUND,"Room last message sender not found");
             }
-            return buildGroupRoomResponse(room, user,me.getUnreadCount());
+            return roomMapper.toGroupRoomResponse(room, user,me.getUnreadCount());
     }
 
     @Override
@@ -128,10 +130,10 @@ public class RoomServiceImpl implements  RoomService {
             if(room.getType() == RoomType.DIRECT) {
                 String target = roomIdToTargetUserId.get(room.getId());
                 UserInfoChatResponse targetInfo = userIdToInfo.get(target);
-                return buildDirectRoomResponse(room, targetInfo,me.getUnreadCount());
+                return roomMapper.toDirectRoomResponse(room, targetInfo,me.getUnreadCount());
             }
             UserInfoChatResponse senderInfo = userIdToInfo.get(room.getLastMessageSenderId());
-            return buildGroupRoomResponse(room, senderInfo,me.getUnreadCount());
+            return roomMapper.toGroupRoomResponse(room, senderInfo,me.getUnreadCount());
         }).toList();
         return CursorPage.of(
                 responses,
@@ -156,7 +158,7 @@ public class RoomServiceImpl implements  RoomService {
         }
         RoomMember me = roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new AppException(RoomErrorCode.USER_NOT_IN_ROOM));
-        return buildGroupRoomResponse(room, senderInfo, me.getUnreadCount());
+        return roomMapper.toGroupRoomResponse(room, senderInfo, me.getUnreadCount());
     }
 
     @Override
@@ -188,39 +190,6 @@ public class RoomServiceImpl implements  RoomService {
     }
 
     // --- Helper Methods ---
-
-    private RoomResponse buildGroupRoomResponse(Room room, UserInfoChatResponse senderInfo,int unread) {
-        String senderName =room.getLastMessageContent() == null?"Room created by "+ senderInfo.displayName(): senderInfo.displayName()+": "+room.getLastMessageContent();
-        return new RoomResponse(
-                room.getId(),
-                room.getName(),
-                room.getAvatar(),
-                room.getDescription(),
-                room.getType(),
-                room.getCreatedBy(),                                // memberCount — xem note bên dưới
-                senderName,
-                room.getLastMessageAt(),
-                unread,                                  // unreadCount — xem note bên dưới
-                room.getCreatedAt()
-        );
-    }
-
-    private RoomResponse buildDirectRoomResponse(Room room, UserInfoChatResponse targetInfo,int unread) {
-        String name   = targetInfo != null ? targetInfo.displayName() : "Unknown";
-        String avatar = targetInfo != null ? targetInfo.avatar()   : null;
-        return new RoomResponse(
-                room.getId(),
-                name,
-                avatar,
-                null,                               // DIRECT không có description
-                room.getType(),
-                room.getCreatedBy(),
-                room.getLastMessageContent(),
-                room.getLastMessageAt(),
-                unread,                                  // unreadCount — xem note bên dưới
-                room.getCreatedAt()
-        );
-    }
     private Room createBaseRoom(String name, RoomType type, String creatorId) {
         String content=null;
         String creator = null;
