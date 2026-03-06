@@ -11,6 +11,5 @@ public record SendMessageRequest(
         String mediaUrl,            // required nếu type = IMAGE/FILE
         String fileName,
         Long fileSize,
-        String replyToId,           // null nếu không reply
-        String threadId             // null nếu không trong thread
+        String replyToId           // null nếu không reply
 ) {}

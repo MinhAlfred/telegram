@@ -3,6 +3,7 @@ package thitkho.chatservice.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -44,5 +45,22 @@ public interface RoomRepository extends JpaRepository<Room, String> {
             @Param("userId") String userId,
             @Param("cursor") LocalDateTime cursor,
             @Param("limit") int limit
+    );
+
+    @Modifying
+    @Query("""
+    UPDATE Room r SET
+        r.lastMessageId = :messageId,
+        r.lastMessageSenderId = :senderId,
+        r.lastMessageContent = :content,
+        r.lastMessageAt = :sentAt
+    WHERE r.id = :roomId
+""")
+    void updateLastMessage(
+            @Param("roomId") String roomId,
+            @Param("messageId") String messageId,
+            @Param("senderId") String senderId,
+            @Param("content") String content,
+            @Param("sentAt") LocalDateTime sentAt
     );
 }

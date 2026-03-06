@@ -1,9 +1,12 @@
 package thitkho.chatservice.dto.response;
 
-import java.util.List;
+import lombok.Builder;
 
+import java.util.List;
+@Builder
 public record ReactionResponse(
+        String messageId,
         String emoji,
-        int count,
-        List<String> userIds            // ai đã react
+        long count,
+        boolean reactedByMe
 ) {}

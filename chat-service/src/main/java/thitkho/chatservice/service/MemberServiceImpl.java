@@ -31,7 +31,6 @@ public class MemberServiceImpl implements  MemberService {
     private final RoomRepository roomRepository;
     private final RoomMemberRepository roomMemberRepository;
     private final UserClient userClient;
-    private final MemberMapper memberMapper;
 
     @Override
     public void addMembers(String userId, String roomId, AddMemberRequest request) {
@@ -84,7 +83,7 @@ public class MemberServiceImpl implements  MemberService {
         Map<String, UserInfoChatResponse> userInfoMap = userClient.getUsersByIds(userIds);
         return members.map(member -> {
             UserInfoChatResponse userInfo = userInfoMap.get(member.getUserId());
-            return memberMapper.toRoomMemberResponse(member,userInfo.displayName(), userInfo.avatar());
+            return MemberMapper.toRoomMemberResponse(member,userInfo.displayName(), userInfo.avatar());
         });
     }
 

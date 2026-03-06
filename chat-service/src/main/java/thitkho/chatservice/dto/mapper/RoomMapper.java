@@ -4,9 +4,8 @@ import org.springframework.stereotype.Component;
 import thitkho.chatservice.dto.response.RoomResponse;
 import thitkho.chatservice.model.Room;
 import thitkho.response.UserInfoChatResponse;
-@Component
 public class RoomMapper {
-    public RoomResponse toDirectRoomResponse(Room room, UserInfoChatResponse targetInfo, int unreadCount) {
+    public static RoomResponse toDirectRoomResponse(Room room, UserInfoChatResponse targetInfo, int unreadCount) {
         String name   = targetInfo != null ? targetInfo.displayName() : "Unknown";
         String avatar = targetInfo != null ? targetInfo.avatar()   : null;
         return new RoomResponse(
@@ -22,7 +21,7 @@ public class RoomMapper {
                 room.getCreatedAt()
         );
     }
-    public RoomResponse toGroupRoomResponse(Room room, UserInfoChatResponse senderInfo, int unreadCount) {
+    public static RoomResponse toGroupRoomResponse(Room room, UserInfoChatResponse senderInfo, int unreadCount) {
         String senderName =room.getLastMessageContent() == null?"Room created by "+ senderInfo.displayName(): senderInfo.displayName()+": "+room.getLastMessageContent();
         return new RoomResponse(
                 room.getId(),

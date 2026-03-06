@@ -40,11 +40,5 @@ public class Message extends TimestampedBase {
 
     // Reply
     private String replyToId;   // messageId được reply
-
-    // Thread
-    private String threadId;    // messageId gốc của thread
-    private int replyCount;     // số reply trong thread
-
-    private boolean isDeleted;  // soft delete
-
+    private boolean isDeleted = false;  // soft delete
 }

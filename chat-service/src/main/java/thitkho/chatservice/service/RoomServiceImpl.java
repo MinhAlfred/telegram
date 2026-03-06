@@ -34,7 +34,6 @@ public class RoomServiceImpl implements  RoomService {
     private final RoomMemberRepository roomMemberRepository;
     private final MessageRepository messageRepository;
     private final UserClient userClient;
-    private final RoomMapper roomMapper;
 
     @Override
     @Transactional
@@ -45,12 +44,12 @@ public class RoomServiceImpl implements  RoomService {
                     int unread = roomMemberRepository.findByRoomIdAndUserId(room.getId(), userId)
                             .map(RoomMember::getUnreadCount)
                             .orElse(0);
-                    return roomMapper.toDirectRoomResponse(room, targetUserInfo, unread);
+                    return RoomMapper.toDirectRoomResponse(room, targetUserInfo, unread);
                 })
                 .orElseGet(() -> {
                     Room room = createBaseRoom(targetUserInfo.displayName(), RoomType.DIRECT, userId);
                     saveMembers(room.getId(), List.of(userId, targetUserId), false);
-                    return roomMapper.toDirectRoomResponse(room, targetUserInfo,0);
+                    return RoomMapper.toDirectRoomResponse(room, targetUserInfo,0);
                 });
     }
 
@@ -61,7 +60,7 @@ public class RoomServiceImpl implements  RoomService {
         Room room = createBaseRoom(request.name(), RoomType.GROUP, userId);
         saveMembers(room.getId(), List.of(userId), true); // owner
         saveMembers(room.getId(), request.memberIds(), false); // members
-        return roomMapper.toGroupRoomResponse(room, userInfo,0);
+        return RoomMapper.toGroupRoomResponse(room, userInfo,0);
     }
 
     @Override
@@ -78,13 +77,13 @@ public class RoomServiceImpl implements  RoomService {
                         .findFirst()
                         .orElse(userId);
                 UserInfoChatResponse targetInfo = userClient.getUserById(targetUserId);
-                return roomMapper.toDirectRoomResponse(room, targetInfo,me.getUnreadCount());
+                return RoomMapper.toDirectRoomResponse(room, targetInfo,me.getUnreadCount());
             }
             UserInfoChatResponse user = userClient.getUserById(room.getLastMessageSenderId());
             if(user == null){
                 throw new AppException(RoomErrorCode.ROOM_NOT_FOUND,"Room last message sender not found");
             }
-            return roomMapper.toGroupRoomResponse(room, user,me.getUnreadCount());
+            return RoomMapper.toGroupRoomResponse(room, user,me.getUnreadCount());
     }
 
     @Override
@@ -130,10 +129,10 @@ public class RoomServiceImpl implements  RoomService {
             if(room.getType() == RoomType.DIRECT) {
                 String target = roomIdToTargetUserId.get(room.getId());
                 UserInfoChatResponse targetInfo = userIdToInfo.get(target);
-                return roomMapper.toDirectRoomResponse(room, targetInfo,me.getUnreadCount());
+                return RoomMapper.toDirectRoomResponse(room, targetInfo,me.getUnreadCount());
             }
             UserInfoChatResponse senderInfo = userIdToInfo.get(room.getLastMessageSenderId());
-            return roomMapper.toGroupRoomResponse(room, senderInfo,me.getUnreadCount());
+            return RoomMapper.toGroupRoomResponse(room, senderInfo,me.getUnreadCount());
         }).toList();
         return CursorPage.of(
                 responses,
@@ -158,7 +157,7 @@ public class RoomServiceImpl implements  RoomService {
         }
         RoomMember me = roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new AppException(RoomErrorCode.USER_NOT_IN_ROOM));
-        return roomMapper.toGroupRoomResponse(room, senderInfo, me.getUnreadCount());
+        return RoomMapper.toGroupRoomResponse(room, senderInfo, me.getUnreadCount());
     }
 
     @Override

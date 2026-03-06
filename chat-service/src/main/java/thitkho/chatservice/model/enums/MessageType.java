@@ -1,3 +1,3 @@
 package thitkho.chatservice.model.enums;
 
-public enum MessageType { TEXT, IMAGE, FILE }
+public enum MessageType { TEXT, FILE, SYSTEM }
