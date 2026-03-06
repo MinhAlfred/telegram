@@ -2,21 +2,14 @@ package thitkho.chatservice.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import thitkho.chatservice.annotation.RequireRoomMember;
 import thitkho.chatservice.client.UserClient;
-import thitkho.chatservice.dto.mapper.ChatMapper;
 import thitkho.chatservice.dto.request.CreateRoomRequest;
 import thitkho.chatservice.dto.request.UpdateRoomRequest;
-import thitkho.chatservice.dto.response.MessageResponse;
 import thitkho.chatservice.dto.response.RoomResponse;
 import thitkho.chatservice.exception.RoomErrorCode;
-import thitkho.chatservice.model.Message;
 import thitkho.chatservice.model.Room;
 import thitkho.chatservice.model.RoomMember;
 import thitkho.chatservice.model.enums.MemberRole;
@@ -31,7 +24,6 @@ import thitkho.response.UserInfoChatResponse;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @RequiredArgsConstructor
 @Service
@@ -54,7 +46,7 @@ public class RoomServiceImpl implements  RoomService {
                     return buildDirectRoomResponse(room, targetUserInfo, unread);
                 })
                 .orElseGet(() -> {
-                    Room room = createBaseRoom(null, RoomType.DIRECT, userId);
+                    Room room = createBaseRoom(targetUserInfo.displayName(), RoomType.DIRECT, userId);
                     saveMembers(room.getId(), List.of(userId, targetUserId), false);
                     return buildDirectRoomResponse(room, targetUserInfo,0);
                 });
@@ -177,28 +169,12 @@ public class RoomServiceImpl implements  RoomService {
     }
 
     @Override
-    public void addMembers(String userId, String roomId, List<String> targetUserIds) {
-
-    }
-
-    @Override
-    public void removeMember(String userId, String roomId, String targetUserId) {
-
-    }
-
-    @Override
-    public void leaveRoom(String userId, String roomId) {
-
-    }
-
-    @Override
-    public void updateMemberRole(String userId, String roomId, String targetUserId, MemberRole role) {
-
-    }
-
-    @Override
     public void markAsRead(String userId, String roomId) {
-
+        RoomMember member = roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
+                .orElseThrow(() -> new AppException(RoomErrorCode.USER_NOT_IN_ROOM));
+        member.setUnreadCount(0);
+        member.setLastReadAt(LocalDateTime.now());
+        roomMemberRepository.save(member);
     }
 
     @Override
@@ -246,12 +222,22 @@ public class RoomServiceImpl implements  RoomService {
         );
     }
     private Room createBaseRoom(String name, RoomType type, String creatorId) {
+        String content=null;
+        String creator = null;
+        LocalDateTime now = null;
+        if(type == RoomType.GROUP) {
+            content = "Room created by: "+name;
+            creator = creatorId;
+            now = LocalDateTime.now();
+        }
         Room room = Room.builder()
                 .name(name)
                 .type(type)
                 .createdBy(creatorId)
                 .isActive(true)
-                .lastMessageSenderId(creatorId)
+                .lastMessageSenderId(creator)
+                .lastMessageContent(content)
+                .lastMessageAt(now)
                 .build();
         return roomRepository.save(room);
     }

@@ -20,12 +20,6 @@ public interface RoomService {
     RoomResponse updateRoom(String userId, String roomId, UpdateRoomRequest request);
     void deleteRoom(String userId, String roomId);
 
-    // Member management
-    void addMembers(String userId, String roomId, List<String> targetUserIds);
-    void removeMember(String userId, String roomId, String targetUserId);
-    void leaveRoom(String userId, String roomId);
-    void updateMemberRole(String userId, String roomId, String targetUserId, MemberRole role);
-
     // Read state
     void markAsRead(String userId, String roomId);
 
