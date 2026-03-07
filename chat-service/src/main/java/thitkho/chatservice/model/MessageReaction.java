@@ -1,10 +1,7 @@
 package thitkho.chatservice.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import thitkho.chatservice.model.base.CreatedAtBase;
 
@@ -18,6 +15,7 @@ import java.time.LocalDateTime;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
 public class MessageReaction extends CreatedAtBase {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

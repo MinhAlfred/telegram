@@ -1,15 +1,16 @@
 package thitkho.chatservice.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import thitkho.chatservice.model.base.TimestampedBase;
 import thitkho.chatservice.model.enums.MessageType;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 @Entity
 @Table(name = "messages")
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
 public class Message extends TimestampedBase {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -35,10 +37,16 @@ public class Message extends TimestampedBase {
     private Long fileSize;      // bytes
 
     // Thêm vào Entity Message
-    @Column(columnDefinition = "jsonb") // Nếu dùng PostgreSQL
-    private String reactionSummary; // Lưu: {"LIKE": 10, "HEART": 5}
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private Map<String, Long> reactionSummary = new HashMap<>();
 
     // Reply
     private String replyToId;   // messageId được reply
     private boolean isDeleted = false;  // soft delete
+    private boolean isEdited = false;   // đã bị chỉnh sửa sau khi gửi
+    // Forward
+    private boolean isForwarded = false; // đã bị chuyển tiếp
+    private String forwardedAvatar;
+    private String forwardedName;
 }

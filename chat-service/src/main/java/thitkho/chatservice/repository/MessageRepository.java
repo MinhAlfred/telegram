@@ -3,6 +3,7 @@ package thitkho.chatservice.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -44,4 +45,25 @@ public interface MessageRepository extends JpaRepository<Message, String> {
             @Param("cursor") LocalDateTime cursor,
             @Param("limit") int limit
     );
+    @Modifying
+    @Query(value = """
+    UPDATE messages 
+    SET reaction_summary = jsonb_set(
+        COALESCE(reaction_summary, '{}'), 
+        ARRAY[:emoji], 
+        (COALESCE(reaction_summary->>:emoji, '0')::int + 1)::text::jsonb
+    ) WHERE id = :messageId
+    """, nativeQuery = true)
+    void incrementReactionCount(String messageId, String emoji);
+
+    @Modifying
+    @Query(value = """
+    UPDATE messages 
+    SET reaction_summary = jsonb_set(
+        reaction_summary, 
+        ARRAY[:emoji], 
+        (GREATEST(0, (COALESCE(reaction_summary->>:emoji, '0')::int - 1)))::text::jsonb
+    ) WHERE id = :messageId
+    """, nativeQuery = true)
+    void decrementReactionCount(String messageId, String emoji);
 }

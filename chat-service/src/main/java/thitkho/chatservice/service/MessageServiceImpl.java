@@ -3,18 +3,21 @@ package thitkho.chatservice.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import thitkho.chatservice.client.UserClient;
 import thitkho.chatservice.dto.mapper.ChatMapper;
 import thitkho.chatservice.dto.request.AddReactionRequest;
 import thitkho.chatservice.dto.request.SendMessageRequest;
-import thitkho.chatservice.dto.request.UpdateLastReadRequest;
+import thitkho.chatservice.dto.response.MessageReactionResponse;
 import thitkho.chatservice.dto.response.MessageResponse;
 import thitkho.chatservice.dto.response.ReactionResponse;
 import thitkho.chatservice.dto.response.ReplyPreview;
 import thitkho.chatservice.exception.MessageErrorCode;
 import thitkho.chatservice.exception.RoomErrorCode;
 import thitkho.chatservice.model.Message;
+import thitkho.chatservice.model.MessageReaction;
 import thitkho.chatservice.model.RoomMember;
+import thitkho.chatservice.model.enums.MessageType;
 import thitkho.chatservice.repository.MessageReactionRepository;
 import thitkho.chatservice.repository.MessageRepository;
 import thitkho.chatservice.repository.RoomMemberRepository;
@@ -24,10 +27,7 @@ import thitkho.payload.CursorPage;
 import thitkho.response.UserInfoChatResponse;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -80,40 +80,50 @@ public class MessageServiceImpl implements MessageService {
         boolean hasNext = messages.size() > limit;
         List<Message> pageMessages = hasNext ? messages.subList(0, limit) : messages;
         List<String> messageIds = pageMessages.stream().map(Message::getId).toList();
-        Map<String, List<ReactionResponse>> reactionsMap = messageReactionRepository
-                .getReactionsByMessageId(messageIds, userId)
-                .stream()
-                .collect(Collectors.groupingBy(ReactionResponse::messageId));
-
-        List<String> senderIds = pageMessages.stream().map(Message::getSenderId).distinct().toList();
-        Map<String, UserInfoChatResponse> userInfoMap = userClient.getUsersByIds(senderIds);
-
         List<String> replyToIds = pageMessages.stream()
                 .map(Message::getReplyToId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-        Map<String, ReplyPreview> replyMap = messageRepository
-                .findAllById(replyToIds)
+        Set<String> allSenderIds = new HashSet<>();
+        pageMessages.forEach(m -> allSenderIds.add(m.getSenderId()));
+
+        Map<String, Message> replyMsgsMap = messageRepository.findAllById(replyToIds)
+                .stream().collect(Collectors.toMap(Message::getId, m -> m));
+
+        replyMsgsMap.values().forEach(m -> allSenderIds.add(m.getSenderId()));
+
+        Map<String, UserInfoChatResponse> userInfoMap = userClient.getUsersByIds(new ArrayList<>(allSenderIds));
+        Map<String, String> userReactionsMap = messageReactionRepository.getUserReactionsByMessageId(messageIds, userId)
                 .stream()
-                .collect(Collectors.toMap(Message::getId, replyMsg -> {
-                    UserInfoChatResponse senderInfo = userInfoMap.get(replyMsg.getSenderId());
-                    return ChatMapper.toReplyPreview(replyMsg, senderInfo.displayName());
-                }));
+                .collect(Collectors.toMap(
+                        MessageReactionResponse::messageId,
+                        MessageReactionResponse::emoji,
+                        (existing, replacement) -> existing // Guard phòng hờ dữ liệu lỗi có 2 reaction
+                ));
 
         List<MessageResponse> responses = pageMessages.stream()
                 .map(msg -> {
                     UserInfoChatResponse sender = userInfoMap.get(msg.getSenderId());
-                    List<ReactionResponse> reactions = reactionsMap
-                            .getOrDefault(msg.getId(), List.of());
-                    ReplyPreview replyPreview = replyMap.get(msg.getReplyToId());
+                    List<ReactionResponse> reactionRes = ChatMapper.mapReactions(
+                            msg.getId(),
+                            msg.getReactionSummary(), // Lấy từ trường JSONB của Entity Message
+                            userReactionsMap.get(msg.getId())
+                    );
+                    Message reply = replyMsgsMap.get(msg.getReplyToId());
+                    ReplyPreview replyPreview = null;
+                    if (reply != null) {
+                        UserInfoChatResponse replySender = userInfoMap.get(reply.getSenderId());
+                        String senderName = (replySender != null) ? replySender.displayName() : "Unknown User";
+                        replyPreview = ChatMapper.toReplyPreview(reply, senderName);
+                    }
                     return ChatMapper.toMessageResponse(msg,
                             sender != null ? sender.displayName() : "Unknown",
                             sender != null ? sender.avatar() : null,
-                            reactions,
+                            reactionRes,
                             replyPreview);
-                })
-                .toList();
+                }
+                ).toList();
 
         String nextCursor = hasNext
                 ? pageMessages.getLast().getCreatedAt().toString()
@@ -123,43 +133,145 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
-    public MessageResponse getMessage(String userId, String messageId) {
-        return null;
-    }
-
-    @Override
-    public MessageResponse editMessage(String userId, String messageId, String newContent) {
-        return null;
+    public void editMessage(String userId, String messageId, String newContent) {
+            Message message = findMessageById(messageId);
+            if(!message.getSenderId().equals(userId)){
+                throw new AppException(MessageErrorCode.NO_PERMISSION);
+            }
+            if(message.isDeleted()){
+                throw new AppException(MessageErrorCode.MESSAGE_DELETED);
+            }
+            if(message.getType() != MessageType.TEXT){
+                throw new AppException(MessageErrorCode.CANNOT_EDIT_NON_TEXT);
+            }
+            if(newContent == null || newContent.isBlank()){
+                throw new AppException(MessageErrorCode.CONTENT_REQUIRED);
+            }
+            message.setContent(newContent);
+            message.setEdited(true);
+            messageRepository.save(message);
+            // publish event to kafka
+            //eventPublisher.publishEvent(new MessageEditedEvent(message));
     }
 
     @Override
     public void deleteMessage(String userId, String messageId) {
-
-    }
-
-    @Override
-    public void updateLastRead(String userId, String roomId, UpdateLastReadRequest request) {
-
+        Message message = findMessageById(messageId);
+        if(!message.getSenderId().equals(userId)){
+            throw new AppException(MessageErrorCode.NO_PERMISSION);
+        }
+        if(message.isDeleted()){
+            throw new AppException(MessageErrorCode.MESSAGE_DELETED);
+        }
+        message.setDeleted(true);
+        messageRepository.save(message);
+        // publish event to kafka
+        //eventPublisher.publishEvent(new MessageDeletedEvent(message));
     }
 
     @Override
     public MessageResponse forwardMessage(String userId, String messageId, String targetRoomId) {
-        return null;
+        roomMemberRepository.findByRoomIdAndUserId(targetRoomId, userId)
+                .orElseThrow(() -> new AppException(RoomErrorCode.USER_NOT_IN_ROOM));
+
+        // 2. Lấy message gốc
+        Message original = messageRepository.findById(messageId)
+                .orElseThrow(() -> new AppException(MessageErrorCode.MESSAGE_NOT_FOUND));
+
+        if (original.isDeleted()) {
+            throw new AppException(MessageErrorCode.MESSAGE_DELETED);
+        }
+        UserInfoChatResponse originalSender = userClient.getUserById(original.getSenderId());
+
+        // 3. Tạo message mới — không copy replyToId (forward là tin mới hoàn toàn)
+        Message forwarded = Message.builder()
+                .roomId(targetRoomId)
+                .senderId(userId)
+                .type(original.getType())
+                .content(original.getContent())
+                .mediaUrl(original.getMediaUrl())
+                .fileName(original.getFileName())
+                .fileSize(original.getFileSize())
+                .forwardedAvatar(originalSender.avatar())
+                .forwardedName(originalSender.displayName())
+                .isForwarded(true)
+                .build();
+        forwarded = messageRepository.save(forwarded);
+
+        // 4. Update lastMessage async
+//        eventPublisher.publishEvent(new MessageSentEvent(forwarded));
+
+        // 5. Build response
+        UserInfoChatResponse senderInfo = userClient.getUserById(userId);
+        return ChatMapper.toMessageResponse(forwarded,
+                senderInfo.displayName(),
+                senderInfo.avatar(),
+                List.of(),
+                null);
     }
 
     @Override
+    @Transactional
     public void addReaction(String userId, String messageId, AddReactionRequest request) {
+        String newEmoji = request.emoji();
 
+        // 1. Tìm reaction cũ của User này cho Message này
+        Optional<MessageReaction> existingOpt = messageReactionRepository
+                .findByMessageIdAndUserId(messageId, userId);
+
+        if (existingOpt.isPresent()) {
+            MessageReaction existing = existingOpt.get();
+
+            // Nếu nhấn lại đúng icon cũ -> Không làm gì (hoặc có thể coi là remove tùy UX)
+            if (existing.getEmoji().equals(newEmoji)) return;
+
+            // TRƯỜNG HỢP ĐỔI ICON (ví dụ từ ❤️ sang 👍)
+            // - Giảm count icon cũ trong JSONB
+            messageRepository.decrementReactionCount(messageId, existing.getEmoji());
+            // - Cập nhật record cũ sang icon mới
+            existing.setEmoji(newEmoji);
+            messageReactionRepository.save(existing);
+        } else {
+            // TRƯỜNG HỢP THẢ MỚI HOÀN TOÀN
+            MessageReaction newReaction = MessageReaction.builder()
+                    .messageId(messageId)
+                    .emoji(newEmoji)
+                    .userId(userId)
+                    .build();
+            messageReactionRepository.save(newReaction);
+        }
+
+        // 2. Tăng count icon mới trong JSONB
+        messageRepository.incrementReactionCount(messageId, newEmoji);
+
+        // 3. TODO: Gửi WebSocket thông báo cho mọi người trong Room
+        // messagingTemplate.convertAndSend("/topic/room/" + roomId, reactionUpdateEvent);
     }
 
     @Override
+    @Transactional
     public void removeReaction(String userId, String messageId, String emoji) {
+        // 1. Tìm và xóa record reaction
+        int deletedCount = messageReactionRepository.deleteByMessageIdAndUserIdAndEmoji(messageId, userId, emoji);
 
+        // 2. Nếu thực sự có xóa (tức là User đã thả icon đó trước đó)
+        if (deletedCount > 0) {
+            // Giảm count trong JSONB
+            messageRepository.decrementReactionCount(messageId, emoji);
+
+            // 3. TODO: Gửi WebSocket thông báo remove
+        }
     }
 
-    @Override
-    public boolean validateAccess(String userId, String roomId) {
-        return false;
+    //---------------------------
+    //Helper method
+    //---------------------------
+
+
+
+    private Message findMessageById(String messageId) {
+        return messageRepository.findById(messageId)
+                .orElseThrow(() -> new AppException(MessageErrorCode.MESSAGE_NOT_FOUND));
     }
 
     private void validateMessageContent(SendMessageRequest request){
