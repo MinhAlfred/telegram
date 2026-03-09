@@ -16,7 +16,7 @@ import thitkho.chatservice.model.enums.MemberRole;
 import thitkho.chatservice.repository.RoomMemberRepository;
 import thitkho.chatservice.repository.RoomRepository;
 import thitkho.exception.AppException;
-import thitkho.response.UserInfoChatResponse;
+import thitkho.dto.response.UserInfoChatResponse;
 
 import java.time.LocalDateTime;
 import java.util.List;

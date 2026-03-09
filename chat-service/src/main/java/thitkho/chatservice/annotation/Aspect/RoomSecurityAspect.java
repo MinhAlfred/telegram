@@ -12,7 +12,7 @@ import thitkho.chatservice.exception.RoomErrorCode;
 import thitkho.chatservice.repository.RoomMemberRepository;
 import thitkho.chatservice.util.SecurityUtils;
 import thitkho.exception.AppException;
-import thitkho.exception.errorcode.CommonErrorCode;
+import thitkho.exception.CommonErrorCode;
 
 @Aspect
 @Component

@@ -1,7 +1,6 @@
 package thitkho.exception;
 
 import lombok.Getter;
-import thitkho.exception.errorcode.ErrorCode;
 
 @Getter
 public class AppException extends RuntimeException {

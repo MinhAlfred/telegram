@@ -1,4 +1,4 @@
-package thitkho.exception.errorcode;
+package thitkho.exception;
 
 
 public interface ErrorCode {

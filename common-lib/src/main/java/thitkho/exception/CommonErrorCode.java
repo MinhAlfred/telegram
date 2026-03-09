@@ -1,4 +1,4 @@
-package thitkho.exception.errorcode;
+package thitkho.exception;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

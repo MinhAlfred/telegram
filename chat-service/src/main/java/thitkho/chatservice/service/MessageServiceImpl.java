@@ -24,7 +24,7 @@ import thitkho.chatservice.repository.RoomMemberRepository;
 import thitkho.chatservice.repository.RoomRepository;
 import thitkho.exception.AppException;
 import thitkho.payload.CursorPage;
-import thitkho.response.UserInfoChatResponse;
+import thitkho.dto.response.UserInfoChatResponse;
 
 import java.time.LocalDateTime;
 import java.util.*;

@@ -2,7 +2,7 @@ package thitkho.chatservice.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
-import thitkho.response.UserInfoChatResponse;
+import thitkho.dto.response.UserInfoChatResponse;
 
 
 import java.util.List;

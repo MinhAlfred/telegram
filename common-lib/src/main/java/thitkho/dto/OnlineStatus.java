@@ -1,3 +1,3 @@
-package thitkho.enums;
+package thitkho.dto;
 
 public enum OnlineStatus { ONLINE, OFFLINE }

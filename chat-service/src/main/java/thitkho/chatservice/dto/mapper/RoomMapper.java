@@ -1,9 +1,8 @@
 package thitkho.chatservice.dto.mapper;
 
-import org.springframework.stereotype.Component;
 import thitkho.chatservice.dto.response.RoomResponse;
 import thitkho.chatservice.model.Room;
-import thitkho.response.UserInfoChatResponse;
+import thitkho.dto.response.UserInfoChatResponse;
 public class RoomMapper {
     public static RoomResponse toDirectRoomResponse(Room room, UserInfoChatResponse targetInfo, int unreadCount) {
         String name   = targetInfo != null ? targetInfo.displayName() : "Unknown";

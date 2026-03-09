@@ -2,7 +2,7 @@ package thitkho.chatservice.exception;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import thitkho.exception.errorcode.ErrorCode;
+import thitkho.exception.ErrorCode;
 @AllArgsConstructor
 @Getter
 public enum MessageErrorCode implements ErrorCode {

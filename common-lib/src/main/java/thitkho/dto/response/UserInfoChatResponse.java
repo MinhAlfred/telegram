@@ -1,6 +1,6 @@
-package thitkho.response;
+package thitkho.dto.response;
 
-import thitkho.enums.OnlineStatus;
+import thitkho.dto.OnlineStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
