@@ -50,3 +50,17 @@ server:
 
 user-service:
     url: ${USER_SERVICE_URL:http://localhost:4001}
+
+internal:
+  secret: ${INTERNAL_SECRET:telegramsecretkey}
+
+# Logging configuration for debugging
+logging:
+  level:
+    thitkho.chatservice: DEBUG
+    thitkho.chatservice.controller: DEBUG
+    thitkho.chatservice.service: DEBUG
+    thitkho.chatservice.producer: DEBUG
+    org.springframework.kafka: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

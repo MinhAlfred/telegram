@@ -9,7 +9,7 @@ import thitkho.dto.response.UserInfoChatResponse;
 import java.util.List;
 import java.util.Map;
 
-@FeignClient(name = "user-service", url = "${user-service.url}")
+@FeignClient(name = "user-service", url = "${user-service.url}", configuration = FeignInternalInterceptor.class)
 public interface UserClient {
     @GetMapping("/api/feign/users/ids")
     Map<String, UserInfoChatResponse> getUsersByIds(@RequestParam List<String> userIds);

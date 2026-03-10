@@ -1,0 +1,4 @@
+name: base
+variables:
+  - name: url
+    value: http://localhost:3000/api

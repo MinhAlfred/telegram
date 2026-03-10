@@ -8,6 +8,7 @@ import io.jsonwebtoken.io.DecodingException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import thitkho.userservice.model.User;
@@ -18,6 +19,7 @@ import java.util.Date;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtUtils {
 
     @Value("${jwt.access-token.secret}")
@@ -61,14 +63,24 @@ public class JwtUtils {
     }
 
     public boolean isValidRefreshToken(String token) {
-        return isValidToken(token, refreshTokenSecret);
+        try {
+            log.debug("Validating refresh token with refresh secret");
+            boolean isValid = isValidToken(token, refreshTokenSecret);
+            log.debug("Refresh token validation result: {}", isValid);
+            return isValid;
+        } catch (Exception e) {
+            log.error("Error validating refresh token: {}", e.getMessage());
+            return false;
+        }
     }
 
     private boolean isValidToken(String token, String secret) {
         try {
+            log.debug("Parsing token with provided secret");
             parseClaims(token, secret);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
+            log.warn("Token validation failed: {}", e.getMessage());
             return false;
         }
     }
@@ -80,7 +92,10 @@ public class JwtUtils {
     }
 
     public String extractUserIdFromRefresh(String token) {
-        return extractClaims(token, refreshTokenSecret).getSubject();
+        log.debug("Extracting userId from refresh token using refresh secret");
+        String userId = extractClaims(token, refreshTokenSecret).getSubject();
+        log.debug("Extracted userId from refresh token: {}", userId);
+        return userId;
     }
 
     public String extractRole(String token) {

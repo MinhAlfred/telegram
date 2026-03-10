@@ -1,6 +1,7 @@
 package thitkho.userservice.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -36,6 +37,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl implements UserService{
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -108,13 +110,21 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public AuthResponse refreshToken(String refreshToken) {
-        if (!jwtUtils.isValidRefreshToken(refreshToken))
-            throw new AppException(AuthErrorCode.INVALID_CREDENTIALS);
+        log.debug("Processing refresh token request");
 
-        String userId = jwtUtils.extractUserId(refreshToken);
+        if (!jwtUtils.isValidRefreshToken(refreshToken)) {
+            log.warn("Invalid refresh token provided");
+            throw new AppException(AuthErrorCode.INVALID_CREDENTIALS);
+        }
+
+        log.debug("Refresh token is valid, extracting user ID");
+        String userId = jwtUtils.extractUserIdFromRefresh(refreshToken);  // ✅ Use refresh token secret
+        log.debug("Extracted userId from refresh token: {}", userId);
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(AuthErrorCode.USER_NOT_FOUND));
 
+        log.debug("User found, generating new auth response for userId: {}", userId);
         return generateAuthResponse(user);
     }
 
