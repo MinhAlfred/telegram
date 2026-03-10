@@ -38,6 +38,7 @@ public class Room extends TimestampedBase {
     private RoomSetting setting = new RoomSetting();
     @Column(unique = true)
     private String inviteCode;
+    private int memberCount = 0; // để tối ưu hiển thị số lượng thành viên ở list phòng
 
     private String createdBy;   // userId
     private String lastMessageId; // để tối ưu truy vấn tin nhắn mới nhất

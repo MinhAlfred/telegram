@@ -12,8 +12,8 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.*;
-import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
 import org.springframework.kafka.support.serializer.JacksonJsonSerializer;
+import thitkho.constant.KafkaTopics;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,15 +30,22 @@ public class KafkaConfig {
     }
 
     @Bean
-    public NewTopic topic1() {
-        return TopicBuilder.name("chat-events")
-                .partitions(5)
+    public NewTopic roomMetadataTopic() {
+        return TopicBuilder.name(KafkaTopics.ROOM_METADATA)
+                .partitions(3)
                 .replicas(1)
-//                .compact()
-                .config(TopicConfig.RETENTION_MS_CONFIG, "604800000")
+                .compact()
                 .build();
     }
 
+    @Bean
+    public NewTopic roomEventsTopic() {
+        return TopicBuilder.name(KafkaTopics.ROOM_EVENTS)
+                .partitions(3)
+                .replicas(1)
+                .config(TopicConfig.RETENTION_MS_CONFIG, "604800000")
+                .build();
+    }
 
     @Bean
     public ProducerFactory<String, Object> producerFactory(KafkaProperties kafkaProperties) {

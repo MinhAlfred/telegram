@@ -63,4 +63,20 @@ public interface RoomRepository extends JpaRepository<Room, String> {
             @Param("content") String content,
             @Param("sentAt") LocalDateTime sentAt
     );
+
+    @Modifying
+    @Query("""
+UPDATE Room r
+SET r.memberCount = r.memberCount + :count
+WHERE r.id = :roomId
+""")
+    void incrementMemberCount(String roomId, int count);
+
+    @Modifying
+    @Query("""
+UPDATE Room r
+SET r.memberCount = r.memberCount - 1
+WHERE r.id = :roomId AND r.memberCount >= 2
+""")
+    void decrementMemberCount(String roomId);
 }

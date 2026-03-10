@@ -15,12 +15,19 @@ import thitkho.chatservice.model.Room;
 import thitkho.chatservice.model.RoomMember;
 import thitkho.chatservice.model.enums.MemberRole;
 import thitkho.chatservice.model.enums.RoomType;
-import thitkho.chatservice.repository.MessageRepository;
 import thitkho.chatservice.repository.RoomMemberRepository;
 import thitkho.chatservice.repository.RoomRepository;
 import thitkho.exception.AppException;
 import thitkho.payload.CursorPage;
 import thitkho.dto.response.UserInfoChatResponse;
+import thitkho.chatservice.producer.ChatEventProducer;
+import thitkho.constant.KafkaTopics;
+import thitkho.payload.event.ChatEvent;
+import thitkho.payload.event.room.RoomCreatedPayload;
+import thitkho.payload.event.room.RoomDeletedPayload;
+import thitkho.payload.event.room.RoomEventType;
+import thitkho.payload.event.room.RoomReadPayload;
+import thitkho.payload.event.room.RoomUpdatedPayload;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -32,8 +39,8 @@ import java.util.stream.Collectors;
 public class RoomServiceImpl implements  RoomService {
     private final RoomRepository roomRepository;
     private final RoomMemberRepository roomMemberRepository;
-    private final MessageRepository messageRepository;
     private final UserClient userClient;
+    private final ChatEventProducer chatEventProducer;
 
     @Override
     @Transactional
@@ -47,8 +54,26 @@ public class RoomServiceImpl implements  RoomService {
                     return RoomMapper.toDirectRoomResponse(room, targetUserInfo, unread);
                 })
                 .orElseGet(() -> {
-                    Room room = createBaseRoom(targetUserInfo.displayName(), RoomType.DIRECT, userId);
+                    Room room = createBaseRoom(targetUserInfo.displayName(), RoomType.DIRECT, userId,2);
                     saveMembers(room.getId(), List.of(userId, targetUserId), false);
+                    String name   = targetUserInfo.displayName();
+                    String avatar = targetUserInfo.avatar();
+                    publishRoomEvent(
+                            room.getId(),
+                            RoomEventType.ROOM_CREATED,
+                            new RoomCreatedPayload(
+                                    room.getId(),
+                                    name,
+                                    avatar,
+                                    null,                               // DIRECT không có description
+                                    room.getType().toString(),
+                                    room.getCreatedBy(),
+                                    room.getLastMessageContent(),
+                                    room.getMemberCount(),
+                                    room.getLastMessageAt(),                                  // unreadCount — xem note bên dưới
+                                    room.getCreatedAt()
+                            )
+                    );
                     return RoomMapper.toDirectRoomResponse(room, targetUserInfo,0);
                 });
     }
@@ -57,9 +82,26 @@ public class RoomServiceImpl implements  RoomService {
     @Transactional
     public RoomResponse createGroupChatRoom(String userId, CreateRoomRequest request) {
         UserInfoChatResponse userInfo = userClient.getUserById(userId);
-        Room room = createBaseRoom(request.name(), RoomType.GROUP, userId);
+        int count = request.memberIds().size() + 1;
+        Room room = createBaseRoom(request.name(), RoomType.GROUP, userId,count);
         saveMembers(room.getId(), List.of(userId), true); // owner
         saveMembers(room.getId(), request.memberIds(), false); // members
+        publishRoomEvent(
+                room.getId(),
+                RoomEventType.ROOM_CREATED,
+                new RoomCreatedPayload(
+                        room.getId(),
+                        request.name(),
+                        request.avatar(),
+                        null,                               // DIRECT không có description
+                        room.getType().toString(),
+                        room.getCreatedBy(),
+                        room.getLastMessageContent(),
+                        room.getMemberCount(),
+                        room.getLastMessageAt(),                                  // unreadCount — xem note bên dưới
+                        room.getCreatedAt()
+                )
+        );
         return RoomMapper.toGroupRoomResponse(room, userInfo,0);
     }
 
@@ -151,6 +193,16 @@ public class RoomServiceImpl implements  RoomService {
         if (request.avatar() != null) room.setAvatar(request.avatar());
         if (request.description() != null) room.setDescription(request.description());
         roomRepository.save(room);
+        publishRoomEvent(
+                roomId,
+                RoomEventType.ROOM_UPDATED,
+                new RoomUpdatedPayload(
+                        roomId,
+                        room.getName(),
+                        room.getAvatar(),
+                        room.getDescription()
+                )
+        );
         UserInfoChatResponse senderInfo = null;
         if (room.getLastMessageSenderId() != null) {
             senderInfo = userClient.getUserById(room.getLastMessageSenderId());
@@ -167,6 +219,13 @@ public class RoomServiceImpl implements  RoomService {
         Room room = findRoomById(roomId);
         room.setActive(false);
         roomRepository.save(room);
+        publishRoomEvent(
+                roomId,
+                RoomEventType.ROOM_DELETED,
+                new RoomDeletedPayload(
+                        roomId
+                )
+        );
     }
 
     @Override
@@ -176,6 +235,14 @@ public class RoomServiceImpl implements  RoomService {
         member.setUnreadCount(0);
         member.setLastReadAt(LocalDateTime.now());
         roomMemberRepository.save(member);
+        publishRoomEvent(
+                roomId,
+                RoomEventType.ROOM_READ,
+                new RoomReadPayload(
+                        roomId,
+                        userId
+                )
+        );
     }
 
     @Override
@@ -189,7 +256,7 @@ public class RoomServiceImpl implements  RoomService {
     }
 
     // --- Helper Methods ---
-    private Room createBaseRoom(String name, RoomType type, String creatorId) {
+    private Room createBaseRoom(String name, RoomType type, String creatorId,int memberCount) {
         String content=null;
         String creator = null;
         LocalDateTime now = null;
@@ -206,6 +273,7 @@ public class RoomServiceImpl implements  RoomService {
                 .lastMessageSenderId(creator)
                 .lastMessageContent(content)
                 .lastMessageAt(now)
+                .memberCount(memberCount)
                 .build();
         return roomRepository.save(room);
     }
@@ -255,5 +323,14 @@ public class RoomServiceImpl implements  RoomService {
         if (member.getRole() != MemberRole.OWNER) {
             throw new AppException(RoomErrorCode.NOT_A_MEMBER);
         }
+    }
+
+    private void publishRoomEvent(String roomId, RoomEventType eventType, Object payload) {
+        String topic = switch (eventType) {
+            case ROOM_CREATED, ROOM_DELETED, ROOM_UPDATED -> KafkaTopics.ROOM_METADATA;
+            default -> KafkaTopics.ROOM_EVENTS;
+        };
+
+        chatEventProducer.publish(topic, roomId, new ChatEvent<>(eventType.name(), roomId, payload));
     }
 }

@@ -10,5 +10,6 @@ import java.util.List;
 public record CreateRoomRequest(
         @NotBlank String name,
         @NotEmpty
-        List<String> memberIds
+        List<String> memberIds,
+        String avatar
 ) {}

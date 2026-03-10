@@ -16,15 +16,19 @@ import thitkho.chatservice.exception.MessageErrorCode;
 import thitkho.chatservice.exception.RoomErrorCode;
 import thitkho.chatservice.model.Message;
 import thitkho.chatservice.model.MessageReaction;
-import thitkho.chatservice.model.RoomMember;
+import thitkho.chatservice.model.Room;
 import thitkho.chatservice.model.enums.MessageType;
+import thitkho.chatservice.producer.ChatEventProducer;
+import thitkho.chatservice.repository.RoomRepository;
+import thitkho.constant.KafkaTopics;
+import thitkho.payload.event.ChatEvent;
 import thitkho.chatservice.repository.MessageReactionRepository;
 import thitkho.chatservice.repository.MessageRepository;
 import thitkho.chatservice.repository.RoomMemberRepository;
-import thitkho.chatservice.repository.RoomRepository;
 import thitkho.exception.AppException;
 import thitkho.payload.CursorPage;
 import thitkho.dto.response.UserInfoChatResponse;
+import thitkho.payload.event.message.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -36,16 +40,21 @@ import java.util.stream.Collectors;
 public class MessageServiceImpl implements MessageService {
     private final UserClient userClient;
     private final MessageRepository messageRepository;
-    private final RoomRepository roomRepository;
     private final RoomMemberRepository roomMemberRepository;
     private final MessageReactionRepository messageReactionRepository;
+    private final ChatEventProducer chatEventProducer;
+    private final RoomRepository roomRepository;
 
     @Override
     public MessageResponse sendMessage(String userId, SendMessageRequest request) {
-        RoomMember member = roomMemberRepository
+        Room room = roomRepository.findById(request.roomId())
+                .orElseThrow(() -> new AppException(RoomErrorCode.ROOM_NOT_FOUND));
+        roomMemberRepository
                 .findByRoomIdAndUserId(request.roomId(), userId)
                 .orElseThrow(() -> new AppException(RoomErrorCode.USER_NOT_IN_ROOM));
+
         validateMessageContent(request);
+
         UserInfoChatResponse info = userClient.getUserById(userId);
         Message message = new Message();
         message.setRoomId(request.roomId());
@@ -58,9 +67,6 @@ public class MessageServiceImpl implements MessageService {
         message.setReplyToId(request.replyToId());
         messageRepository.save(message);
 
-        // publish event to kafka
-        //eventPublisher.publishEvent(new MessageSentEvent(message));
-
         ReplyPreview replyPreview = null;
         if (request.replyToId() != null) {
             Message replyToMsg = messageRepository.findById(request.replyToId())
@@ -68,6 +74,40 @@ public class MessageServiceImpl implements MessageService {
             UserInfoChatResponse replyToSender = userClient.getUserById(replyToMsg.getSenderId());
             replyPreview = ChatMapper.toReplyPreview(replyToMsg, replyToSender.displayName());
         }
+
+        thitkho.dto.response.ReplyPreview finalReplyPreview = thitkho.dto.response.ReplyPreview.builder()
+                .id(replyPreview.id())
+                .senderName(replyPreview.senderName())
+                .type(replyPreview.type().name())
+                .content(replyPreview.content())
+                .senderId(replyPreview.senderId())
+                .build();
+        room.setLastMessageSenderId(userId);
+        room.setLastMessageContent(request.type() == MessageType.TEXT ? request.content() : ("[" + request.type().name() + "]"));
+        room.setLastMessageAt(message.getCreatedAt());
+        roomRepository.save(room);
+        roomMemberRepository.incrementUnreadCount(request.roomId(),userId);
+        publishMessageEvent(
+                KafkaTopics.ROOM_EVENTS,
+                request.roomId(),
+                MessageEventType.MESSAGE_SENT,
+                new MessageSentPayload(
+                        message.getId(),
+                        message.getRoomId(),
+                        message.getSenderId(),
+                        info.displayName(),
+                        info.avatar(),
+                        message.getType().name(),
+                        message.getContent(),
+                        message.getMediaUrl(),
+                        message.getFileName(),
+                        message.getFileSize(),
+                        message.getReplyToId(),
+                        finalReplyPreview,
+                        false,
+                        message.getCreatedAt(),
+                        message.getUpdatedAt()
+                        ));
         return ChatMapper.toMessageResponse(message, info.displayName(), info.avatar(), List.of(), replyPreview);
     }
 
@@ -150,8 +190,18 @@ public class MessageServiceImpl implements MessageService {
             message.setContent(newContent);
             message.setEdited(true);
             messageRepository.save(message);
-            // publish event to kafka
-            //eventPublisher.publishEvent(new MessageEditedEvent(message));
+            publishMessageEvent(
+                    KafkaTopics.ROOM_EVENTS,
+                    message.getRoomId(),
+                    MessageEventType.MESSAGE_EDITED,
+                    new MessageEditedPayload(
+                            message.getRoomId(),
+                            message.getId(),
+                            newContent,
+                            true,
+                            LocalDateTime.now()
+                    )
+            );
     }
 
     @Override
@@ -165,8 +215,17 @@ public class MessageServiceImpl implements MessageService {
         }
         message.setDeleted(true);
         messageRepository.save(message);
-        // publish event to kafka
-        //eventPublisher.publishEvent(new MessageDeletedEvent(message));
+        publishMessageEvent(
+                KafkaTopics.ROOM_EVENTS,
+                message.getRoomId(),
+                MessageEventType.MESSAGE_DELETED,
+                new MessageDeletedPayload(
+                        message.getRoomId(),
+                        message.getId(),
+                        true,
+                        LocalDateTime.now()
+                )
+        );
     }
 
     @Override
@@ -197,12 +256,29 @@ public class MessageServiceImpl implements MessageService {
                 .isForwarded(true)
                 .build();
         forwarded = messageRepository.save(forwarded);
-
-        // 4. Update lastMessage async
-//        eventPublisher.publishEvent(new MessageSentEvent(forwarded));
+        UserInfoChatResponse senderInfo = userClient.getUserById(userId);
+        publishMessageEvent(
+                KafkaTopics.ROOM_EVENTS,
+                targetRoomId,
+                MessageEventType.MESSAGE_FORWARDED,
+                new MessageForwardedPayload(
+                        forwarded.getId(),
+                        targetRoomId,
+                        forwarded.getSenderId(),
+                        senderInfo.displayName(),
+                        senderInfo.avatar(),
+                        forwarded.getType().name(),
+                        forwarded.getContent(),
+                        forwarded.getMediaUrl(),
+                        forwarded.getFileName(),
+                        forwarded.getFileSize(),
+                        true,
+                        LocalDateTime.now()
+                )
+        );
 
         // 5. Build response
-        UserInfoChatResponse senderInfo = userClient.getUserById(userId);
+
         return ChatMapper.toMessageResponse(forwarded,
                 senderInfo.displayName(),
                 senderInfo.avatar(),
@@ -244,8 +320,25 @@ public class MessageServiceImpl implements MessageService {
         // 2. Tăng count icon mới trong JSONB
         messageRepository.incrementReactionCount(messageId, newEmoji);
 
-        // 3. TODO: Gửi WebSocket thông báo cho mọi người trong Room
-        // messagingTemplate.convertAndSend("/topic/room/" + roomId, reactionUpdateEvent);
+        Message message = findMessageById(messageId);
+        Map<String, Long> updatedSummary = message.getReactionSummary();
+
+        chatEventProducer.publish(
+                KafkaTopics.ROOM_EVENTS,
+                message.getRoomId(),
+                new ChatEvent<>(
+                        MessageEventType.REACTION_UPDATED.name(),
+                        message.getRoomId(),
+                        new ReactionUpdatedPayload(
+                                message.getRoomId(),
+                                messageId,
+                                message.getReactionSummary(),
+                                userId,
+                                newEmoji,
+                                false
+                        )
+                )
+        );
     }
 
     @Override
@@ -258,8 +351,23 @@ public class MessageServiceImpl implements MessageService {
         if (deletedCount > 0) {
             // Giảm count trong JSONB
             messageRepository.decrementReactionCount(messageId, emoji);
-
-            // 3. TODO: Gửi WebSocket thông báo remove
+            Message message = findMessageById(messageId);
+            chatEventProducer.publish(
+                    KafkaTopics.ROOM_EVENTS,
+                    message.getRoomId(),
+                    new ChatEvent<>(
+                            MessageEventType.REACTION_UPDATED.name(),
+                            message.getRoomId(),
+                            new ReactionUpdatedPayload(
+                                    message.getRoomId(),
+                                    messageId,
+                                    message.getReactionSummary(),
+                                    userId,
+                                    emoji,
+                                    true
+                            )
+                    )
+            );
         }
     }
 
@@ -289,9 +397,17 @@ public class MessageServiceImpl implements MessageService {
                     throw new AppException(MessageErrorCode.MEDIA_URL_REQUIRED);
                 }
             }
-            case SYSTEM -> {
-                throw new AppException(MessageErrorCode.CANNOT_SEND_SYSTEM_MESSAGE);
-            }
+            case SYSTEM -> throw new AppException(MessageErrorCode.CANNOT_SEND_SYSTEM_MESSAGE);
         }
     }
+
+    private void publishMessageEvent(
+            String topic,
+            String roomId,
+            MessageEventType eventType,
+            Object payload
+    ) {
+        chatEventProducer.publish(topic, roomId, new ChatEvent<>(eventType.name(), roomId, payload));
+    }
+
 }

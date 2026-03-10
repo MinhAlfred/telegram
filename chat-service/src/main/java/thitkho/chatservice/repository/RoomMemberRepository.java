@@ -31,4 +31,6 @@ public interface RoomMemberRepository extends JpaRepository<RoomMember, String> 
             @Param("roomId") String roomId,
             @Param("senderId") String senderId
     );
+
+
 }

@@ -1,20 +1,17 @@
-package thitkho.chatservice.dto.response;
-
-import lombok.Builder;
-import thitkho.chatservice.model.enums.RoomType;
+package thitkho.payload.event.room;
 
 import java.time.LocalDateTime;
-@Builder
-public record RoomResponse(
+
+public record RoomCreatedPayload(
         String id,
         String name,
         String avatar,
         String description,
-        RoomType type,
+        String type,
         String createdBy,
         String lastMessage,    // tin nhắn mới nhất
+        int memberCount,       // số lượng thành viên hiện tại
         LocalDateTime lastMessageAt, // thời gian tin nhắn mới nhất
-        long unreadCount,
-        int memberCount,// số tin chưa đọc
         LocalDateTime createdAt
 ) {}
+

@@ -17,6 +17,7 @@ public class RoomMapper {
                 room.getLastMessageContent(),
                 room.getLastMessageAt(),
                 unreadCount,                                  // unreadCount — xem note bên dưới
+                room.getMemberCount(),
                 room.getCreatedAt()
         );
     }
@@ -32,6 +33,7 @@ public class RoomMapper {
                 senderName,
                 room.getLastMessageAt(),
                 unreadCount,                                  // unreadCount — xem note bên dưới
+                room.getMemberCount(),
                 room.getCreatedAt()
         );
     }
