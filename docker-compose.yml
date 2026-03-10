@@ -1,0 +1,26 @@
+services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: redpanda-tele
+    command:
+      - redpanda start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda-tele:9092,external://localhost:19092
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr localhost:8082
+    ports:
+      - "19092:19092"
+      - "9092:9092"
+      - "8082:8082"
+      - "8081:8081"
+
+  console:
+    image: docker.redpanda.com/redpandadata/console:latest
+    container_name: redpanda-console-tele
+    environment:
+      # Kết nối nội bộ Docker dùng container_name và port 9092
+      KAFKA_BROKERS: "redpanda-tele:9092"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redpanda

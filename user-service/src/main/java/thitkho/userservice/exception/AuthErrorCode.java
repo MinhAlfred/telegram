@@ -2,7 +2,7 @@ package thitkho.userservice.exception;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import thitkho.exception.errorcode.ErrorCode;
+import thitkho.exception.ErrorCode;
 
 @AllArgsConstructor
 @Getter

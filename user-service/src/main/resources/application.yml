@@ -37,7 +37,7 @@ api:
     prefix: /api
 
 server:
-    port: 8080
+    port: 4001
 
 jwt:
   access-token:

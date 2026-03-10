@@ -4,7 +4,7 @@
  * You shall not disclose such confidential information and shall use it only in
  * accordance with the terms of the license agreement you entered into with Bit Learning.
  */
-package thitkho.userservice.config;
+package thitkho.chatservice.config;
 
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeIn;
@@ -27,7 +27,7 @@ import org.springframework.context.annotation.Configuration;
                                 @Contact(name = "API Support", email = "support@bit-learning.com")),
         security = @SecurityRequirement(name = "bearer-jwt"),
         servers = {
-            @Server(url = "http://localhost:4001", description = "Local Dev")
+            @Server(url = "http://localhost:4000", description = "Local Dev")
         })
 @SecurityScheme(
         name = "bearer-jwt",

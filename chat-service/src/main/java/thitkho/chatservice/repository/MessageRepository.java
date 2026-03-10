@@ -15,12 +15,6 @@ import java.util.List;
 
 @Repository
 public interface MessageRepository extends JpaRepository<Message, String> {
-    // Load chat history
-    Page<Message> findByRoomIdAndIsDeletedFalse(String roomId, Pageable pageable);
-
-    // Load thread
-    Page<Message> findByThreadIdAndIsDeletedFalse(String threadId, Pageable pageable);
-
     // Unread count
     @Query("""
             SELECT COUNT(m) FROM Message m
