@@ -2,6 +2,7 @@ package thitkho.chatservice.dto.response;
 
 import lombok.Builder;
 import thitkho.chatservice.model.enums.MessageType;
+import thitkho.dto.response.ReplyPreview;
 
 import java.time.LocalDateTime;
 import java.util.List;

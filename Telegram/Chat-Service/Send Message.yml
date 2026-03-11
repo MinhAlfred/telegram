@@ -1,0 +1,30 @@
+info:
+  name: Send Message
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{url}}/messages"
+  headers:
+    - name: Authorization
+      value: Bearer {{accessToken}}
+  body:
+    type: json
+    data: |-
+      {
+        "roomId": "cd45779e-f54a-4a81-88b4-92203acd7528",
+        "type": "TEXT",
+        "content": "em ten la Van",
+        "mediaUrl": "",
+        "fileName": "",
+        "fileSize": 0,
+        "replyToId": null
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

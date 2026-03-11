@@ -11,7 +11,6 @@ import thitkho.chatservice.dto.request.SendMessageRequest;
 import thitkho.chatservice.dto.response.MessageReactionResponse;
 import thitkho.chatservice.dto.response.MessageResponse;
 import thitkho.chatservice.dto.response.ReactionResponse;
-import thitkho.chatservice.dto.response.ReplyPreview;
 import thitkho.chatservice.exception.MessageErrorCode;
 import thitkho.chatservice.exception.RoomErrorCode;
 import thitkho.chatservice.model.Message;
@@ -21,6 +20,7 @@ import thitkho.chatservice.model.enums.MessageType;
 import thitkho.chatservice.producer.ChatEventProducer;
 import thitkho.chatservice.repository.RoomRepository;
 import thitkho.constant.KafkaTopics;
+import thitkho.dto.response.ReplyPreview;
 import thitkho.payload.event.ChatEvent;
 import thitkho.chatservice.repository.MessageReactionRepository;
 import thitkho.chatservice.repository.MessageRepository;
@@ -46,6 +46,7 @@ public class MessageServiceImpl implements MessageService {
     private final RoomRepository roomRepository;
 
     @Override
+    @Transactional
     public MessageResponse sendMessage(String userId, SendMessageRequest request) {
         Room room = roomRepository.findById(request.roomId())
                 .orElseThrow(() -> new AppException(RoomErrorCode.ROOM_NOT_FOUND));
@@ -75,13 +76,6 @@ public class MessageServiceImpl implements MessageService {
             replyPreview = ChatMapper.toReplyPreview(replyToMsg, replyToSender.displayName());
         }
 
-        thitkho.dto.response.ReplyPreview finalReplyPreview = thitkho.dto.response.ReplyPreview.builder()
-                .id(replyPreview.id())
-                .senderName(replyPreview.senderName())
-                .type(replyPreview.type().name())
-                .content(replyPreview.content())
-                .senderId(replyPreview.senderId())
-                .build();
         room.setLastMessageSenderId(userId);
         room.setLastMessageContent(request.type() == MessageType.TEXT ? request.content() : ("[" + request.type().name() + "]"));
         room.setLastMessageAt(message.getCreatedAt());
@@ -103,7 +97,7 @@ public class MessageServiceImpl implements MessageService {
                         message.getFileName(),
                         message.getFileSize(),
                         message.getReplyToId(),
-                        finalReplyPreview,
+                        replyPreview,
                         false,
                         message.getCreatedAt(),
                         message.getUpdatedAt()
@@ -115,7 +109,7 @@ public class MessageServiceImpl implements MessageService {
     public CursorPage<MessageResponse> getMessages(String userId, String roomId, String cursor, int limit) {
         roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new AppException(RoomErrorCode.USER_NOT_IN_ROOM));
-        LocalDateTime cursorTime = cursor != null ? LocalDateTime.parse(cursor) : null;
+        LocalDateTime cursorTime = cursor != null ? LocalDateTime.parse(cursor) : LocalDateTime.now();
         List<Message> messages = messageRepository.findMessagesByRoomIdWithCursor(roomId, cursorTime, limit+1);
         boolean hasNext = messages.size() > limit;
         List<Message> pageMessages = hasNext ? messages.subList(0, limit) : messages;
@@ -173,6 +167,7 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    @Transactional
     public void editMessage(String userId, String messageId, String newContent) {
             Message message = findMessageById(messageId);
             if(!message.getSenderId().equals(userId)){
@@ -205,6 +200,7 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    @Transactional
     public void deleteMessage(String userId, String messageId) {
         Message message = findMessageById(messageId);
         if(!message.getSenderId().equals(userId)){
@@ -229,6 +225,7 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    @Transactional
     public MessageResponse forwardMessage(String userId, String messageId, String targetRoomId) {
         roomMemberRepository.findByRoomIdAndUserId(targetRoomId, userId)
                 .orElseThrow(() -> new AppException(RoomErrorCode.USER_NOT_IN_ROOM));

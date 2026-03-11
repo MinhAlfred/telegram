@@ -1,0 +1,28 @@
+info:
+  name: Create Group Chat
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{url}}/rooms/group"
+  headers:
+    - name: Authorization
+      value: Bearer {{accessToken}}
+  body:
+    type: json
+    data: |-
+      {
+        "name": "group chat crypto",
+        "memberIds": [
+          "9dd65062-3b1c-4f5f-97e6-0d6968cd2400",
+          "bc83b8c1-cea7-4d7a-805b-519a9cb5d7cf"
+        ],
+        "avatar": ""
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

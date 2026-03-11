@@ -13,7 +13,7 @@ http:
     type: json
     data: |-
       {
-        "username": "lan",
+        "username": "van",
         "password": "string"
       }
   auth: inherit
@@ -24,8 +24,9 @@ runtime:
       code: |-
         const body = res.getBody();
 
-        bru.setEnvVar("accessToken", body.data.accessToken);
-        bru.setEnvVar("refreshToken", body.data.refreshToken);
+        bru.setVar("accessToken", body.data.accessToken);
+        bru.setVar("refreshToken", body.data.refreshToken);
+        console.log("Token runtime:", body.data.accessToken);
 
 settings:
   encodeUrl: true

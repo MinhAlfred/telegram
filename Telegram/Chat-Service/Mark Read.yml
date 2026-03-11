@@ -1,21 +1,15 @@
 info:
-  name: Me
+  name: Mark Read
   type: http
-  seq: 5
+  seq: 4
 
 http:
-  method: GET
-  url: "{{url}}/users/me"
+  method: POST
+  url: "{{url}}/rooms/cd45779e-f54a-4a81-88b4-92203acd7528/read"
   headers:
     - name: Authorization
       value: Bearer {{accessToken}}
   auth: inherit
-
-runtime:
-  variables:
-    - name: accessToken
-      value: ""
-      disabled: true
 
 settings:
   encodeUrl: true

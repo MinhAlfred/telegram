@@ -16,6 +16,9 @@ import java.util.Optional;
 @Repository
 public interface RoomRepository extends JpaRepository<Room, String> {
     List<Room> findByCreatedBy(String userId);
+
+    Optional<Room> findByDirectHash(String directHash);
+
     @Query(value = """
     SELECT r.* FROM rooms r
     JOIN room_members m1 ON r.id = m1.room_id
@@ -37,7 +40,7 @@ public interface RoomRepository extends JpaRepository<Room, String> {
     JOIN RoomMember rm ON rm.roomId = r.id
     WHERE rm.userId = :userId
     AND r.isActive = true
-    AND (:cursor IS NULL OR r.lastMessageAt < :cursor)
+    AND  r.lastMessageAt < :cursor
     ORDER BY r.lastMessageAt DESC
     LIMIT :limit
     """)

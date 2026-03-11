@@ -11,6 +11,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import thitkho.constant.KafkaTopics;
 import thitkho.payload.event.ChatEvent;
+import thitkho.payload.event.member.*;
 import thitkho.payload.event.message.*;
 import thitkho.payload.event.room.*;
 import thitkho.wsservice.config.RedisRelayConfig;
@@ -26,13 +27,13 @@ public class ChatEventConsumer {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
-    // MESSAGE_SENT, MESSAGE_EDITED, MESSAGE_DELETED, MESSAGE_FORWARDED, REACTION_UPDATED, ROOM_READ
     @KafkaListener(topics = KafkaTopics.ROOM_EVENTS, groupId = "ws-service")
     public void handleRoomEvents(String raw) {
         try {
             JsonNode node = objectMapper.readTree(raw);
             String eventType = node.get("type").asText();
 
+            // Message events
             try {
                 switch (MessageEventType.valueOf(eventType)) {
                     case MESSAGE_SENT      -> handleMessageSent(node);
@@ -44,6 +45,18 @@ public class ChatEventConsumer {
                 return;
             } catch (IllegalArgumentException ignored) {}
 
+            // Member events
+            try {
+                switch (MemberEventType.valueOf(eventType)) {
+                    case MEMBER_ADDED        -> handleMemberAdded(node);
+                    case MEMBER_REMOVED      -> handleMemberRemoved(node);
+                    case MEMBER_LEFT         -> handleMemberLeft(node);
+                    case MEMBER_ROLE_CHANGED -> handleMemberRoleChanged(node);
+                }
+                return;
+            } catch (IllegalArgumentException ignored) {}
+
+            // Room events on this topic
             if (RoomEventType.ROOM_READ.name().equals(eventType)) {
                 handleRoomRead(node);
             } else {
@@ -95,6 +108,26 @@ public class ChatEventConsumer {
     private void handleReactionUpdated(JsonNode node) throws JsonProcessingException {
         ChatEvent<ReactionUpdatedPayload> event = objectMapper.treeToValue(node, new TypeReference<>() {});
         pushToRoom(event, "/queue/messages");
+    }
+
+    private void handleMemberAdded(JsonNode node) throws JsonProcessingException {
+        ChatEvent<MemberAddedPayload> event = objectMapper.treeToValue(node, new TypeReference<>() {});
+        pushToRoom(event, "/queue/members");
+    }
+
+    private void handleMemberRemoved(JsonNode node) throws JsonProcessingException {
+        ChatEvent<MemberRemovedPayload> event = objectMapper.treeToValue(node, new TypeReference<>() {});
+        pushToRoom(event, "/queue/members");
+    }
+
+    private void handleMemberLeft(JsonNode node) throws JsonProcessingException {
+        ChatEvent<MemberLeftPayload> event = objectMapper.treeToValue(node, new TypeReference<>() {});
+        pushToRoom(event, "/queue/members");
+    }
+
+    private void handleMemberRoleChanged(JsonNode node) throws JsonProcessingException {
+        ChatEvent<MemberRoleChangedPayload> event = objectMapper.treeToValue(node, new TypeReference<>() {});
+        pushToRoom(event, "/queue/members");
     }
 
     private void handleRoomRead(JsonNode node) throws JsonProcessingException {

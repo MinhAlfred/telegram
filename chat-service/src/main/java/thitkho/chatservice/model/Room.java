@@ -12,7 +12,9 @@ import thitkho.chatservice.model.enums.RoomType;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "rooms")
+@Table(name = "rooms", indexes = {
+        @Index(name = "idx_room_direct_hash", columnList = "directHash", unique = true)
+})
 @EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
@@ -47,4 +49,5 @@ public class Room extends TimestampedBase {
     private LocalDateTime lastMessageAt; // để sắp xếp phòng theo tin nhắn mới nhất
     private boolean isActive = true;
 
+    private String directHash; // hash(sorted userId1 + userId2) — chỉ dùng cho DIRECT room
 }

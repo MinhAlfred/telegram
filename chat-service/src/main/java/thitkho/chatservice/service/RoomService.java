@@ -13,7 +13,7 @@ import java.util.List;
 
 public interface RoomService {
     // Room
-    RoomResponse createPrivateChatRoom(String userId, String targetUserId);
+    RoomResponse getOrCreatePrivateRoom(String userId, String targetUserId);
     RoomResponse createGroupChatRoom(String userId, CreateRoomRequest request);
     RoomResponse getRoom(String userId, String roomId);
     CursorPage<RoomResponse> getMyRooms(String userId, String cursor, int limit);

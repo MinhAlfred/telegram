@@ -1,13 +1,9 @@
 package thitkho.chatservice.dto.mapper;
 
-import org.springframework.stereotype.Component;
 import thitkho.chatservice.dto.response.MessageResponse;
 import thitkho.chatservice.dto.response.ReactionResponse;
-import thitkho.chatservice.dto.response.ReplyPreview;
-import thitkho.chatservice.dto.response.RoomResponse;
 import thitkho.chatservice.model.Message;
-import thitkho.chatservice.model.MessageReaction;
-import thitkho.chatservice.model.Room;
+import thitkho.dto.response.ReplyPreview;
 
 import java.util.Collections;
 import java.util.List;
@@ -40,7 +36,7 @@ public class ChatMapper {
                 .id(message.getId())
                 .content(message.getContent())
                 .senderId(message.getSenderId())
-                .type(message.getType())
+                .type(message.getType().name())
                 .senderName(senderName)
                 .build();
     }

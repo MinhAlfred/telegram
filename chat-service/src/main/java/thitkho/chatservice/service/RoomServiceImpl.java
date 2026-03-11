@@ -21,6 +21,7 @@ import thitkho.exception.AppException;
 import thitkho.payload.CursorPage;
 import thitkho.dto.response.UserInfoChatResponse;
 import thitkho.chatservice.producer.ChatEventProducer;
+import thitkho.chatservice.util.RoomUtils;
 import thitkho.constant.KafkaTopics;
 import thitkho.payload.event.ChatEvent;
 import thitkho.payload.event.room.RoomCreatedPayload;
@@ -44,37 +45,36 @@ public class RoomServiceImpl implements  RoomService {
 
     @Override
     @Transactional
-    public RoomResponse createPrivateChatRoom(String userId, String targetUserId) {
+    public RoomResponse getOrCreatePrivateRoom(String userId, String targetUserId) {
         UserInfoChatResponse targetUserInfo = userClient.getUserById(targetUserId);
-        return findExistingPrivateRoom(userId, targetUserId)
+        String directHash = RoomUtils.generateDirectHash(userId, targetUserId);
+        return roomRepository.findByDirectHash(directHash)
                 .map(room -> {
                     int unread = roomMemberRepository.findByRoomIdAndUserId(room.getId(), userId)
                             .map(RoomMember::getUnreadCount)
                             .orElse(0);
-                    return RoomMapper.toDirectRoomResponse(room, targetUserInfo, unread);
+                    return RoomMapper.toDirectRoomResponse(room, targetUserInfo, unread, false);
                 })
                 .orElseGet(() -> {
-                    Room room = createBaseRoom(targetUserInfo.displayName(), RoomType.DIRECT, userId,2);
+                    Room room = createDirectRoom(targetUserInfo.displayName(), userId, directHash);
                     saveMembers(room.getId(), List.of(userId, targetUserId), false);
-                    String name   = targetUserInfo.displayName();
-                    String avatar = targetUserInfo.avatar();
                     publishRoomEvent(
                             room.getId(),
                             RoomEventType.ROOM_CREATED,
                             new RoomCreatedPayload(
                                     room.getId(),
-                                    name,
-                                    avatar,
-                                    null,                               // DIRECT không có description
+                                    targetUserInfo.displayName(),
+                                    targetUserInfo.avatar(),
+                                    null,
                                     room.getType().toString(),
                                     room.getCreatedBy(),
                                     room.getLastMessageContent(),
                                     room.getMemberCount(),
-                                    room.getLastMessageAt(),                                  // unreadCount — xem note bên dưới
+                                    room.getLastMessageAt(),
                                     room.getCreatedAt()
                             )
                     );
-                    return RoomMapper.toDirectRoomResponse(room, targetUserInfo,0);
+                    return RoomMapper.toDirectRoomResponse(room, targetUserInfo, 0, true);
                 });
     }
 
@@ -83,7 +83,7 @@ public class RoomServiceImpl implements  RoomService {
     public RoomResponse createGroupChatRoom(String userId, CreateRoomRequest request) {
         UserInfoChatResponse userInfo = userClient.getUserById(userId);
         int count = request.memberIds().size() + 1;
-        Room room = createBaseRoom(request.name(), RoomType.GROUP, userId,count);
+        Room room = createBaseRoom(request.name(), RoomType.GROUP, userId,count, userInfo.displayName());
         saveMembers(room.getId(), List.of(userId), true); // owner
         saveMembers(room.getId(), request.memberIds(), false); // members
         publishRoomEvent(
@@ -119,7 +119,7 @@ public class RoomServiceImpl implements  RoomService {
                         .findFirst()
                         .orElse(userId);
                 UserInfoChatResponse targetInfo = userClient.getUserById(targetUserId);
-                return RoomMapper.toDirectRoomResponse(room, targetInfo,me.getUnreadCount());
+                return RoomMapper.toDirectRoomResponse(room, targetInfo, me.getUnreadCount(), false);
             }
             UserInfoChatResponse user = userClient.getUserById(room.getLastMessageSenderId());
             if(user == null){
@@ -132,19 +132,20 @@ public class RoomServiceImpl implements  RoomService {
     public CursorPage<RoomResponse> getMyRooms(String userId, String cursor, int limit) {
         LocalDateTime cursorTime = cursor != null
                 ? LocalDateTime.parse(cursor)
-                : null;
+                : LocalDateTime.now();
         List<Room> rooms = roomRepository.findRoomsByUserIdWithCursor(userId, cursorTime, limit);
+        log.info("Fetched rooms: {}", rooms);
         if(rooms.isEmpty()) {
             return CursorPage.of(List.of(), limit,null);
         }
         Set<String> allNeededUserIds = new HashSet<>();
         List<String> roomTargetId = rooms.stream()
-                .filter(r -> r.getType() == RoomType.DIRECT)
                 .map(Room::getId)
                 .toList();
+        log.info("roomTargetId: {}", roomTargetId);
         Map<String, List<RoomMember>> roomIdToMember = roomMemberRepository.findAllByRoomIdIn(roomTargetId).stream()
                 .collect(Collectors.groupingBy(RoomMember::getRoomId));
-
+        log.info("roomIdToMember: {}", roomIdToMember);
         Map<String,String> roomIdToTargetUserId = new HashMap<>();
         rooms.forEach(room -> {
             if(room.getType() == RoomType.DIRECT) {
@@ -171,7 +172,7 @@ public class RoomServiceImpl implements  RoomService {
             if(room.getType() == RoomType.DIRECT) {
                 String target = roomIdToTargetUserId.get(room.getId());
                 UserInfoChatResponse targetInfo = userIdToInfo.get(target);
-                return RoomMapper.toDirectRoomResponse(room, targetInfo,me.getUnreadCount());
+                return RoomMapper.toDirectRoomResponse(room, targetInfo, me.getUnreadCount(), false);
             }
             UserInfoChatResponse senderInfo = userIdToInfo.get(room.getLastMessageSenderId());
             return RoomMapper.toGroupRoomResponse(room, senderInfo,me.getUnreadCount());
@@ -256,21 +257,27 @@ public class RoomServiceImpl implements  RoomService {
     }
 
     // --- Helper Methods ---
-    private Room createBaseRoom(String name, RoomType type, String creatorId,int memberCount) {
-        String content=null;
-        String creator = null;
-        LocalDateTime now = null;
-        if(type == RoomType.GROUP) {
-            content = "Room created by: "+name;
-            creator = creatorId;
-            now = LocalDateTime.now();
-        }
+    private Room createDirectRoom(String name, String creatorId, String directHash) {
+        Room room = Room.builder()
+                .name(name)
+                .type(RoomType.DIRECT)
+                .createdBy(creatorId)
+                .isActive(true)
+                .memberCount(2)
+                .directHash(directHash)
+                .build();
+        return roomRepository.save(room);
+    }
+
+    private Room createBaseRoom(String name, RoomType type, String creatorId, int memberCount,String creatorName) {
+        String content = "Room created by: " + creatorName;
+        LocalDateTime now = LocalDateTime.now();
         Room room = Room.builder()
                 .name(name)
                 .type(type)
                 .createdBy(creatorId)
                 .isActive(true)
-                .lastMessageSenderId(creator)
+                .lastMessageSenderId(creatorId)
                 .lastMessageContent(content)
                 .lastMessageAt(now)
                 .memberCount(memberCount)
@@ -291,16 +298,6 @@ public class RoomServiceImpl implements  RoomService {
                     .build();
             roomMemberRepository.save(member);
         });
-    }
-
-    private Optional<Room> findExistingPrivateRoom(String userId1, String userId2) {
-        Optional<Room> existRoom = roomRepository.findPrivateRoom(userId1, userId2);
-        if(existRoom.isEmpty()){
-            log.info("No existing private room found for users {} and {}", userId1, userId2);
-        } else {
-            log.info("Found existing private room {} for users {} and {}", existRoom.get().getId(), userId1, userId2);
-        }
-        return existRoom;
     }
 
     private Room findRoomById(String roomId) {

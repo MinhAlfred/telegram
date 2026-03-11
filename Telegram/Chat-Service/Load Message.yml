@@ -1,0 +1,30 @@
+info:
+  name: Load Message
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: "{{url}}/messages?roomId=cd45779e-f54a-4a81-88b4-92203acd7528"
+  headers:
+    - name: Authorization
+      value: Bearer {{accessToken}}
+  params:
+    - name: roomId
+      value: cd45779e-f54a-4a81-88b4-92203acd7528
+      type: query
+    - name: cursor
+      value: ""
+      type: query
+      disabled: true
+    - name: limit
+      value: ""
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

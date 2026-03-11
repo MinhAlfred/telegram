@@ -12,9 +12,10 @@ public record RoomResponse(
         String description,
         RoomType type,
         String createdBy,
-        String lastMessage,    // tin nhắn mới nhất
-        LocalDateTime lastMessageAt, // thời gian tin nhắn mới nhất
+        String lastMessage,
+        LocalDateTime lastMessageAt,
         long unreadCount,
-        int memberCount,// số tin chưa đọc
-        LocalDateTime createdAt
+        int memberCount,
+        LocalDateTime createdAt,
+        boolean isNew
 ) {}

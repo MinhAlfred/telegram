@@ -19,11 +19,11 @@ public class RoomController {
     private final RoomService roomService;
 
     @PostMapping("/private")
-    @Operation(description = "Create or get existing private chat room between two users. Returns existing room if already created.")
-    public ApiResponse<RoomResponse> createPrivateRoom(
+    @Operation(description = "Get existing or create new private chat room between two users. Returns existing room if already exists, creates new one otherwise.")
+    public ApiResponse<RoomResponse> getOrCreatePrivateRoom(
             @RequestHeader("X-User-Id") String userId,
             @RequestParam String targetUserId) {
-        return ApiResponse.success(roomService.createPrivateChatRoom(userId, targetUserId));
+        return ApiResponse.success(roomService.getOrCreatePrivateRoom(userId, targetUserId));
     }
 
     @PostMapping("/group")
