@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: ws-service
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  kafka:
+    bootstrap-servers: localhost:19092
+    consumer:
+      group-id: ws-service
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+jwt:
+  secret: youraccesstokensecretbase64encoded256bityouraccesstokensecretbase64encoded256bityouraccesstokensecretbase64encoded256bit
+
+server:
+  port: 4002

@@ -10,7 +10,7 @@ http:
     type: json
     data: |-
       {
-        "refreshToken": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJiYzgzYjhjMS1jZWE3LTRkN2EtODA1Yi01MTlhOWNiNWQ3Y2YiLCJlbWFpbCI6ImxhbkBleGFtcGxlLmNvbSIsInJvbGUiOiJVU0VSIiwidXNlcm5hbWUiOiJsYW4iLCJpYXQiOjE3NzMxMzQ4MzUsImV4cCI6MTc3MzczOTYzNX0.AzHQ97x53fuemUTiBCQYRYAxa5BWx77dfsGJ2vxbzt82rmS1bNbx2kNrhWtuOuUia6d1wdL7C97KYD3UuHCODg"
+        "refreshToken": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJiYzgzYjhjMS1jZWE3LTRkN2EtODA1Yi01MTlhOWNiNWQ3Y2YiLCJlbWFpbCI6ImxhbkBleGFtcGxlLmNvbSIsInJvbGUiOiJVU0VSIiwidXNlcm5hbWUiOiJsYW4iLCJpYXQiOjE3NzMxMzU0NjgsImV4cCI6MTc3Mzc0MDI2OH0.mEMdOOGi7VA8TQNmjjiRdfcv-EHuUcSoTPT7fAfPE_sI4QYJiGzk_20czGrFktG554M69S_eiH8-Ra651pKvkQ"
       }
   auth: inherit
 

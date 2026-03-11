@@ -6,6 +6,9 @@ info:
 http:
   method: POST
   url: "{{url}}/users/auth/login"
+  headers:
+    - name: ""
+      value: ""
   body:
     type: json
     data: |-
@@ -14,6 +17,15 @@ http:
         "password": "string"
       }
   auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        const body = res.getBody();
+
+        bru.setEnvVar("accessToken", body.data.accessToken);
+        bru.setEnvVar("refreshToken", body.data.refreshToken);
 
 settings:
   encodeUrl: true

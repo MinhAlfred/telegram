@@ -9,10 +9,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 @Component
@@ -56,8 +61,25 @@ public class InternalSecretFilter extends OncePerRequestFilter {
                     """);
             return;
         }
+        String userId = request.getHeader("X-User-Id");
+        String role = request.getHeader("X-User-Role");
 
-        log.debug("[InternalSecretFilter] Internal secret validated, forwarding request: {} {}", method, path);
+        String formattedRole = role != null ? (role.startsWith("ROLE_") ? role : "ROLE_" + role) : "ROLE_USER";
+        List<SimpleGrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority(formattedRole));
+
+        // 2. Tạo đối tượng Authentication
+        // Quan trọng: Đối số đầu tiên chính là "Principal".
+        // Khi bạn để userId ở đây, @AuthenticationPrincipal sẽ lấy được nó.
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(userId, null, authorities);
+
+        // (Tùy chọn) Lưu thêm chi tiết request nếu cần
+        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+        // 3. Set vào SecurityContext
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        log.debug("[InternalSecretFilter] Authenticated user {} with role {}", userId, formattedRole);
         filterChain.doFilter(request, response);
     }
 

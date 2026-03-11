@@ -1,0 +1,22 @@
+info:
+  name: Create Room Private
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{url}}/rooms/private?targetUserId=455dad5d-2ca1-473e-83c0-3383da6c0e54"
+  headers:
+    - name: Authorization
+      value: Bearer {{accessToken}}
+  params:
+    - name: targetUserId
+      value: 455dad5d-2ca1-473e-83c0-3383da6c0e54
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
