@@ -14,6 +14,7 @@ import thitkho.chatservice.exception.RoomErrorCode;
 import thitkho.chatservice.model.Room;
 import thitkho.chatservice.model.RoomMember;
 import thitkho.chatservice.model.enums.MemberRole;
+import thitkho.chatservice.model.enums.RoomType;
 import thitkho.chatservice.producer.ChatEventProducer;
 import thitkho.constant.KafkaTopics;
 import thitkho.payload.event.ChatEvent;
@@ -43,7 +44,10 @@ public class MemberServiceImpl implements  MemberService {
     public void addMembers(String userId, String roomId, AddMemberRequest request) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new AppException(RoomErrorCode.ROOM_NOT_FOUND));
-        validateAdminAccess(userId, roomId);
+        if(room.getType() == RoomType.DIRECT) {
+            throw new AppException(RoomErrorCode.CANNOT_ADD_MEMBERS_TO_DIRECT_ROOM);
+        }
+//        validateAdminAccess(userId, roomId);
         LocalDateTime now= LocalDateTime.now();
         Set<String> existingMembers = roomMemberRepository.findByRoomId(roomId)
                 .stream()
@@ -78,6 +82,7 @@ public class MemberServiceImpl implements  MemberService {
     }
 
     @Override
+    @Transactional
     public void removeMember(String userId, String roomId, String targetUserId) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new AppException(RoomErrorCode.ROOM_NOT_FOUND));
@@ -98,6 +103,7 @@ public class MemberServiceImpl implements  MemberService {
     }
 
     @Override
+    @Transactional
     public void leaveRoom(String userId, String roomId) {
         RoomMember member = roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new AppException(RoomErrorCode.USER_NOT_IN_ROOM));
@@ -125,6 +131,7 @@ public class MemberServiceImpl implements  MemberService {
     }
 
     @Override
+    @Transactional
     public void changeMemberRole(String userId, String roomId, String targetUserId, MemberRole role) {
         roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new AppException(RoomErrorCode.NOT_A_MEMBER));
@@ -150,7 +157,7 @@ public class MemberServiceImpl implements  MemberService {
         RoomMember member = roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new AppException(RoomErrorCode.NOT_A_MEMBER));
         if (member.getRole() != MemberRole.OWNER && member.getRole() != MemberRole.ADMIN) {
-            throw new AppException(RoomErrorCode.NOT_A_MEMBER);
+            throw new AppException(RoomErrorCode.USER_NOT_PERMISSION);
         }
     }
 

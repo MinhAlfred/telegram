@@ -1,15 +1,21 @@
 info:
-  name: Add Member
+  name: Get Member
   type: http
   seq: 6
 
 http:
-  method: POST
-  url: "{{url}}/members"
+  method: GET
+  url: "{{url}}/members/cd45779e-f54a-4a81-88b4-92203acd7528?page=0&size=5"
   headers:
     - name: Authorization
       value: Bearer {{accessToken}}
   params:
+    - name: page
+      value: "0"
+      type: query
+    - name: size
+      value: "5"
+      type: query
     - name: cursor
       value: ""
       type: query
@@ -18,14 +24,6 @@ http:
       value: ""
       type: query
       disabled: true
-  body:
-    type: json
-    data: |-
-      {
-        "userIds": [
-          "string"
-        ]
-      }
   auth: inherit
 
 settings:

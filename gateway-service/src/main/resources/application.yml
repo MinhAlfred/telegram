@@ -16,7 +16,7 @@ spring:
             - id: chat-service
               uri: http://localhost:4000
               predicates:
-                - Path=/api/rooms/**, /api/messages/**, /api/rooms/**
+                - Path=/api/rooms/**, /api/messages/**, /api/members/**
               filters:
                 - name: AuthFilter
 
@@ -32,7 +32,7 @@ jwt:
 gateway:
   internal-secret: ${INTERNAL_SECRET:telegramsecretkey}
 
-# Public endpoints ? không c?n JWT
+# Public endpoints ? khï¿½ng c?n JWT
 public:
   endpoints:
     - /api/users/auth/login

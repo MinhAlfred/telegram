@@ -21,7 +21,7 @@ import thitkho.payload.ApiResponse;
 public class MemberController {
     private final MemberService memberService;
 
-    @PostMapping
+    @PostMapping("/{roomId}/add")
     @Operation(description = "Add new members to a room. Only room admins or owner can perform this action.")
     public ApiResponse<Void> addMembers(
             @RequestHeader("X-User-Id") String userId,
@@ -31,7 +31,7 @@ public class MemberController {
         return ApiResponse.success(null);
     }
 
-    @DeleteMapping("/{targetUserId}")
+    @DeleteMapping("/{roomId}/{targetUserId}")
     @Operation(description = "Remove a member from room. Only room admins or owner can remove members.")
     public ApiResponse<Void> removeMember(
             @RequestHeader("X-User-Id") String userId,
@@ -41,7 +41,7 @@ public class MemberController {
         return ApiResponse.success(null);
     }
 
-    @PostMapping("/leave")
+    @PostMapping("/leave/{roomId}")
     @Operation(description = "Leave a room. Any member can leave a room voluntarily.")
     public ApiResponse<Void> leaveRoom(
             @RequestHeader("X-User-Id") String userId,
@@ -50,7 +50,7 @@ public class MemberController {
         return ApiResponse.success(null);
     }
 
-    @GetMapping
+    @GetMapping("/{roomId}")
     @Operation(description = "Get paginated list of members in a room. Returns member info with user details.")
     public ApiResponse<Page<RoomMemberResponse>> getMembers(
             @PathVariable String roomId,
@@ -58,7 +58,7 @@ public class MemberController {
         return ApiResponse.success(memberService.getMembers(roomId, pageable));
     }
 
-    @PutMapping("/{targetUserId}/role")
+    @PutMapping("{roomId}/{targetUserId}/role")
     @Operation(description = "Change member role in room. Only room owner can change roles.")
     public ApiResponse<Void> changeMemberRole(
             @RequestHeader("X-User-Id") String userId,

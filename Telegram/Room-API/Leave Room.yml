@@ -1,0 +1,18 @@
+info:
+  name: Leave Room
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{url}}/members/leave/cd45779e-f54a-4a81-88b4-92203acd7528"
+  headers:
+    - name: Authorization
+      value: Bearer {{accessToken}}
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
