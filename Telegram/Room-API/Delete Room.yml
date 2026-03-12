@@ -1,0 +1,18 @@
+info:
+  name: Delete Room
+  type: http
+  seq: 11
+
+http:
+  method: DELETE
+  url: "{{url}}/rooms/cd45779e-f54a-4a81-88b4-92203acd7528"
+  headers:
+    - name: Authorization
+      value: Bearer {{accessToken}}
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

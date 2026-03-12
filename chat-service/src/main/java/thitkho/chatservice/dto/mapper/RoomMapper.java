@@ -5,11 +5,10 @@ import thitkho.chatservice.model.Room;
 import thitkho.dto.response.UserInfoChatResponse;
 public class RoomMapper {
     public static RoomResponse toDirectRoomResponse(Room room, UserInfoChatResponse targetInfo, int unreadCount, boolean isNew) {
-        String name   = targetInfo != null ? targetInfo.displayName() : "Unknown";
         String avatar = targetInfo != null ? targetInfo.avatar()   : null;
         return new RoomResponse(
                 room.getId(),
-                name,
+                room.getName(),
                 avatar,
                 null,
                 room.getType(),

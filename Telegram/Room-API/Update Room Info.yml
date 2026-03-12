@@ -1,0 +1,26 @@
+info:
+  name: Update Room Info
+  type: http
+  seq: 10
+
+http:
+  method: PUT
+  url: "{{url}}/rooms/3549c816-6bec-4551-aa85-9ec77ff7c5d9"
+  headers:
+    - name: Authorization
+      value: Bearer {{accessToken}}
+  body:
+    type: json
+    data: |-
+      {
+        "name": "đổi thử",
+        "avatar": "test",
+        "description": "test"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

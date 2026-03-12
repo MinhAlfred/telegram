@@ -188,11 +188,13 @@ public class RoomServiceImpl implements  RoomService {
     @Override
     @Transactional
     public RoomResponse updateRoom(String userId, String roomId, UpdateRoomRequest request) {
-        validateAdminAccess(userId, roomId);
         Room room = findRoomById(roomId);
+        if(room.getType() != RoomType.DIRECT){
+            validateAdminAccess(userId, roomId);
+        }
         if (request.name() != null) room.setName(request.name());
-        if (request.avatar() != null) room.setAvatar(request.avatar());
-        if (request.description() != null) room.setDescription(request.description());
+        if (request.avatar() != null && room.getType() != RoomType.DIRECT) room.setAvatar(request.avatar());
+        if (request.description() != null && room.getType() != RoomType.DIRECT) room.setDescription(request.description());
         roomRepository.save(room);
         publishRoomEvent(
                 roomId,
@@ -216,8 +218,10 @@ public class RoomServiceImpl implements  RoomService {
     @Override
     @Transactional
     public void deleteRoom(String userId, String roomId) {
-        validateOwnerAccess(userId, roomId);
         Room room = findRoomById(roomId);
+        if(room.getType() != RoomType.DIRECT){
+            validateOwnerAccess(userId, roomId);
+        }
         room.setActive(false);
         roomRepository.save(room);
         publishRoomEvent(
@@ -309,7 +313,7 @@ public class RoomServiceImpl implements  RoomService {
         RoomMember member = roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new AppException(RoomErrorCode.NOT_A_MEMBER));
         if (member.getRole() != MemberRole.OWNER && member.getRole() != MemberRole.ADMIN) {
-            throw new AppException(RoomErrorCode.NOT_A_MEMBER);
+            throw new AppException(RoomErrorCode.USER_NOT_PERMISSION);
         }
     }
 
@@ -318,7 +322,7 @@ public class RoomServiceImpl implements  RoomService {
                 .orElseThrow(() -> new AppException(RoomErrorCode.NOT_A_MEMBER));
 
         if (member.getRole() != MemberRole.OWNER) {
-            throw new AppException(RoomErrorCode.NOT_A_MEMBER);
+            throw new AppException(RoomErrorCode.USER_NOT_PERMISSION);
         }
     }
 
