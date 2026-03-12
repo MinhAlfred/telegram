@@ -1,17 +1,17 @@
 info:
-  name: Create Room Private
+  name: Foward Message
   type: http
-  seq: 1
+  seq: 4
 
 http:
   method: POST
-  url: "{{url}}/rooms/private?targetUserId=9dd65062-3b1c-4f5f-97e6-0d6968cd2400"
+  url: "{{url}}/messages/a0789ce3-e2eb-4c17-bcdc-b833bb6ded3c/forward?targetRoomId=cd45779e-f54a-4a81-88b4-92203acd7528"
   headers:
     - name: Authorization
       value: Bearer {{accessToken}}
   params:
-    - name: targetUserId
-      value: 9dd65062-3b1c-4f5f-97e6-0d6968cd2400
+    - name: targetRoomId
+      value: cd45779e-f54a-4a81-88b4-92203acd7528
       type: query
   auth: inherit
 

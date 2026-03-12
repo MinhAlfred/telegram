@@ -46,7 +46,6 @@ public class ChatMapper {
 //                .build();
 //    }
     public static List<ReactionResponse> mapReactions(
-        String messageId,
         Map<String, Long> summary, // Giả sử Jackson đã map JSONB về Map<String, Long>
         String userEmoji           // Emoji mà tôi đã thả, null nếu chưa thả gì
         ) {
@@ -56,7 +55,6 @@ public class ChatMapper {
 
     return summary.entrySet().stream()
             .map(entry -> new ReactionResponse(
-                    messageId,
                     entry.getKey(),               // Emoji (e.g., "❤️")
                     entry.getValue(),              // Tổng số người thả (e.g., 10)
                     entry.getKey().equals(userEmoji) // So sánh xem tôi có thả cái này không

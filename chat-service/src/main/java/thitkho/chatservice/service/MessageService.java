@@ -14,6 +14,6 @@ public interface MessageService {
     MessageResponse forwardMessage(String userId, String messageId, String targetRoomId);
     // Reaction
     void addReaction(String userId, String messageId, AddReactionRequest request);
-    void removeReaction(String userId, String messageId, String emoji);
+    void removeReaction(String userId, String messageId);
 
 }

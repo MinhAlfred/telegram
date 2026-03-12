@@ -36,7 +36,7 @@ public class MessageController {
         return ApiResponse.success(messageService.getMessages(userId, roomId, cursor, limit));
     }
 
-    @PutMapping("/{messageId}")
+    @PatchMapping("/{messageId}")
     @Operation(description = "Edit message content. Only text messages can be edited and only by the sender.")
     public ApiResponse<Void> editMessage(
             @RequestHeader("X-User-Id") String userId,
@@ -78,9 +78,8 @@ public class MessageController {
     @Operation(description = "Remove emoji reaction from a message. User can only remove their own reactions.")
     public ApiResponse<Void> removeReaction(
             @RequestHeader("X-User-Id") String userId,
-            @PathVariable String messageId,
-            @RequestParam String emoji) {
-        messageService.removeReaction(userId, messageId, emoji);
+            @PathVariable String messageId) {
+        messageService.removeReaction(userId, messageId);
         return ApiResponse.success(null);
     }
 }

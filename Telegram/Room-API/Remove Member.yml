@@ -1,11 +1,11 @@
 info:
-  name: Add Member
+  name: Remove Member
   type: http
-  seq: 6
+  seq: 7
 
 http:
-  method: POST
-  url: "{{url}}/members/cd45779e-f54a-4a81-88b4-92203acd7528/add"
+  method: DELETE
+  url: "{{url}}/members/cd45779e-f54a-4a81-88b4-92203acd7528/9dd65062-3b1c-4f5f-97e6-0d6968cd2400"
   headers:
     - name: Authorization
       value: Bearer {{accessToken}}
@@ -18,14 +18,6 @@ http:
       value: ""
       type: query
       disabled: true
-  body:
-    type: json
-    data: |-
-      {
-        "userIds": [
-          "9dd65062-3b1c-4f5f-97e6-0d6968cd2400"
-        ]
-      }
   auth: inherit
 
 settings:

@@ -32,6 +32,6 @@ public interface MessageReactionRepository extends JpaRepository<MessageReaction
     );
     @Modifying
     @Transactional
-    int deleteByMessageIdAndUserIdAndEmoji(String messageId, String userId, String emoji);
+    int deleteByMessageIdAndUserId(String messageId, String userId);
 
 }

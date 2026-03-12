@@ -1,0 +1,18 @@
+info:
+  name: Remove Reaction
+  type: http
+  seq: 6
+
+http:
+  method: DELETE
+  url: "{{url}}/messages/3e85d9f1-993a-448f-8ff2-1f89fa2b005c/reactions"
+  headers:
+    - name: Authorization
+      value: Bearer {{accessToken}}
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

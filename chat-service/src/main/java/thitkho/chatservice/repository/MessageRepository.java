@@ -52,12 +52,18 @@ public interface MessageRepository extends JpaRepository<Message, String> {
 
     @Modifying
     @Query(value = """
-    UPDATE messages 
-    SET reaction_summary = jsonb_set(
-        reaction_summary, 
-        ARRAY[:emoji], 
-        (GREATEST(0, (COALESCE(reaction_summary->>:emoji, '0')::int - 1)))::text::jsonb
-    ) WHERE id = :messageId
-    """, nativeQuery = true)
+UPDATE messages
+SET reaction_summary =
+CASE
+    WHEN (COALESCE(reaction_summary->>:emoji, '0')::int - 1) <= 0
+        THEN reaction_summary - :emoji
+    ELSE jsonb_set(
+        reaction_summary,
+        ARRAY[:emoji],
+        ((COALESCE(reaction_summary->>:emoji, '0')::int - 1))::text::jsonb
+    )
+END
+WHERE id = :messageId
+""", nativeQuery = true)
     void decrementReactionCount(String messageId, String emoji);
 }

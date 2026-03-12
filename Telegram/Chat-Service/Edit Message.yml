@@ -1,17 +1,17 @@
 info:
-  name: Create Room Private
+  name: Edit Message
   type: http
-  seq: 1
+  seq: 3
 
 http:
-  method: POST
-  url: "{{url}}/rooms/private?targetUserId=9dd65062-3b1c-4f5f-97e6-0d6968cd2400"
+  method: PATCH
+  url: "{{url}}/messages/b1cd986a-a4ef-4788-994a-e6ba7a38d0a4?content=edit message nhé"
   headers:
     - name: Authorization
       value: Bearer {{accessToken}}
   params:
-    - name: targetUserId
-      value: 9dd65062-3b1c-4f5f-97e6-0d6968cd2400
+    - name: content
+      value: edit message nhé
       type: query
   auth: inherit
 

@@ -140,7 +140,6 @@ public class MessageServiceImpl implements MessageService {
                 .map(msg -> {
                     UserInfoChatResponse sender = userInfoMap.get(msg.getSenderId());
                     List<ReactionResponse> reactionRes = ChatMapper.mapReactions(
-                            msg.getId(),
                             msg.getReactionSummary(), // Lấy từ trường JSONB của Entity Message
                             userReactionsMap.get(msg.getId())
                     );
@@ -229,11 +228,11 @@ public class MessageServiceImpl implements MessageService {
     public MessageResponse forwardMessage(String userId, String messageId, String targetRoomId) {
         roomMemberRepository.findByRoomIdAndUserId(targetRoomId, userId)
                 .orElseThrow(() -> new AppException(RoomErrorCode.USER_NOT_IN_ROOM));
-
         // 2. Lấy message gốc
         Message original = messageRepository.findById(messageId)
                 .orElseThrow(() -> new AppException(MessageErrorCode.MESSAGE_NOT_FOUND));
-
+        roomMemberRepository.findByRoomIdAndUserId(original.getRoomId(), userId)
+                .orElseThrow(() -> new AppException(RoomErrorCode.USER_NOT_IN_ROOM));
         if (original.isDeleted()) {
             throw new AppException(MessageErrorCode.MESSAGE_DELETED);
         }
@@ -253,6 +252,7 @@ public class MessageServiceImpl implements MessageService {
                 .isForwarded(true)
                 .build();
         forwarded = messageRepository.save(forwarded);
+        roomMemberRepository.incrementUnreadCount(targetRoomId, userId);
         UserInfoChatResponse senderInfo = userClient.getUserById(userId);
         publishMessageEvent(
                 KafkaTopics.ROOM_EVENTS,
@@ -286,6 +286,9 @@ public class MessageServiceImpl implements MessageService {
     @Override
     @Transactional
     public void addReaction(String userId, String messageId, AddReactionRequest request) {
+        Message message = findMessageById(messageId);
+        roomMemberRepository.findByRoomIdAndUserId(message.getRoomId(), userId)
+                .orElseThrow(() -> new AppException(RoomErrorCode.USER_NOT_IN_ROOM));
         String newEmoji = request.emoji();
 
         // 1. Tìm reaction cũ của User này cho Message này
@@ -296,7 +299,9 @@ public class MessageServiceImpl implements MessageService {
             MessageReaction existing = existingOpt.get();
 
             // Nếu nhấn lại đúng icon cũ -> Không làm gì (hoặc có thể coi là remove tùy UX)
-            if (existing.getEmoji().equals(newEmoji)) return;
+            if (existing.getEmoji().equals(newEmoji)) {
+                return; // Không thay đổi gì, nên không cần update DB hay publish event
+            }
 
             // TRƯỜNG HỢP ĐỔI ICON (ví dụ từ ❤️ sang 👍)
             // - Giảm count icon cũ trong JSONB
@@ -316,10 +321,6 @@ public class MessageServiceImpl implements MessageService {
 
         // 2. Tăng count icon mới trong JSONB
         messageRepository.incrementReactionCount(messageId, newEmoji);
-
-        Message message = findMessageById(messageId);
-        Map<String, Long> updatedSummary = message.getReactionSummary();
-
         chatEventProducer.publish(
                 KafkaTopics.ROOM_EVENTS,
                 message.getRoomId(),
@@ -340,12 +341,14 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     @Transactional
-    public void removeReaction(String userId, String messageId, String emoji) {
+    public void removeReaction(String userId, String messageId) {
         // 1. Tìm và xóa record reaction
-        int deletedCount = messageReactionRepository.deleteByMessageIdAndUserIdAndEmoji(messageId, userId, emoji);
-
+        String emoji = null;
+        Optional<MessageReaction> exist = messageReactionRepository.findByMessageIdAndUserId(messageId, userId);
         // 2. Nếu thực sự có xóa (tức là User đã thả icon đó trước đó)
-        if (deletedCount > 0) {
+        if (exist.isPresent()) {
+            emoji= exist.get().getEmoji();
+            messageReactionRepository.delete(exist.get());
             // Giảm count trong JSONB
             messageRepository.decrementReactionCount(messageId, emoji);
             Message message = findMessageById(messageId);

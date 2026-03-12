@@ -13,9 +13,9 @@ http:
     type: json
     data: |-
       {
-        "roomId": "cd45779e-f54a-4a81-88b4-92203acd7528",
+        "roomId": "3549c816-6bec-4551-aa85-9ec77ff7c5d9",
         "type": "TEXT",
-        "content": "em ten la Van",
+        "content": "chao Van xinh dep",
         "mediaUrl": "",
         "fileName": "",
         "fileSize": 0,
