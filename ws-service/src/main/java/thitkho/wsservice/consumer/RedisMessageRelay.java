@@ -24,6 +24,7 @@ public class RedisMessageRelay implements MessageListener {
             JsonNode root = objectMapper.readTree(message.getBody());
             String destination = root.get("destination").asText();
             JsonNode payload = root.get("payload");
+            log.info("Relaying Redis message to WebSocket destination: {}, with payload: {}", destination, payload);
             messagingTemplate.convertAndSend(destination, payload);
         } catch (Exception e) {
             log.error("Error relaying Redis message to WebSocket", e);

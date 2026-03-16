@@ -5,13 +5,13 @@ info:
 
 http:
   method: GET
-  url: "{{url}}/messages?roomId=cd45779e-f54a-4a81-88b4-92203acd7528"
+  url: "{{url}}/messages?roomId=3549c816-6bec-4551-aa85-9ec77ff7c5d9"
   headers:
     - name: Authorization
       value: Bearer {{accessToken}}
   params:
     - name: roomId
-      value: cd45779e-f54a-4a81-88b4-92203acd7528
+      value: 3549c816-6bec-4551-aa85-9ec77ff7c5d9
       type: query
     - name: cursor
       value: ""

@@ -248,6 +248,12 @@ public class UserServiceImpl implements UserService{
         userRepository.save(user);
     }
 
+    @Override
+    public Page<UserResponse> search(Pageable pageable, String query) {
+        return userRepository.searchUsers( query,pageable)
+                .map(UserMapper::toResponse);
+    }
+
     // ==================== HELPER ====================
 
     private User findUserById(String userId) {

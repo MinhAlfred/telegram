@@ -41,4 +41,6 @@ public interface UserService {
     void banUser(String userId);
     void unbanUser(String userId);
     void changeRole(String userId, Role role);
+
+    Page<UserResponse> search(Pageable pageable,String query);
 }

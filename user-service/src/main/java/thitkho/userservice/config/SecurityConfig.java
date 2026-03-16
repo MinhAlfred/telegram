@@ -34,7 +34,7 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/api/users/auth/**"    // public — Gateway không check JWT
                         ).permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/users/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(internalSecretFilter, UsernamePasswordAuthenticationFilter.class)

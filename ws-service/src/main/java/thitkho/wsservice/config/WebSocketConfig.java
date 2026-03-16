@@ -26,9 +26,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // enableSimpleBroker: in-memory broker, phù hợp single instance
-        // Nếu cần multi-instance scale-out: dùng enableStompBrokerRelay trỏ tới RabbitMQ (STOMP port 61613)
-        // Redis không nói STOMP protocol nên KHÔNG dùng được với enableStompBrokerRelay
         registry.enableSimpleBroker("/topic", "/queue");
 
         registry.setApplicationDestinationPrefixes("/app");

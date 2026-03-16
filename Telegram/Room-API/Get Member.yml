@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: "{{url}}/members/3549c816-6bec-4551-aa85-9ec77ff7c5d9?page=0&size=5"
+  url: "{{url}}/members/cd45779e-f54a-4a81-88b4-92203acd7528?page=0&size=5"
   headers:
     - name: Authorization
       value: Bearer {{accessToken}}

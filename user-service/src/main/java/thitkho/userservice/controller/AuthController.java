@@ -160,7 +160,13 @@ public class AuthController {
         userService.changeRole(userId, Role.valueOf(body.get("role")));
         return ResponseEntity.ok(ApiResponse.success(null));
     }
-
+    // ==================== USER ====================
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<Page<UserResponse>>> searchUsers(
+            @RequestParam String query,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(userService.search(pageable, query)));
+    }
     // ==================== HELPER ====================
 
     private String extractToken(HttpServletRequest request) {
