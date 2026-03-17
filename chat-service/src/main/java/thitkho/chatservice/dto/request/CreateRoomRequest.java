@@ -11,5 +11,6 @@ public record CreateRoomRequest(
         @NotBlank String name,
         @NotEmpty
         List<String> memberIds,
-        String avatar
+        String avatar,
+        String description
 ) {}

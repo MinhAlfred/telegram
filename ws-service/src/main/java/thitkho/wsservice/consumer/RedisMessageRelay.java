@@ -50,14 +50,62 @@ public class RedisMessageRelay implements MessageListener {
                 return;
             }
 
-            // Room events — route theo roomId
-            String queue = ROOM_QUEUE_MAP.get(eventType);
+            // ROOM_CREATED / ROOM_DELETED — push tới từng member qua user topic
+            if (RoomEventType.ROOM_CREATED.name().equals(eventType)
+                    || RoomEventType.ROOM_DELETED.name().equals(eventType)) {
+                String roomId = root.get("roomId").asText();
+                Map<String, String> notification = Map.of("eventType", eventType, "roomId", roomId);
+                JsonNode memberIds = payload.get("memberIds");
+                if (memberIds != null && memberIds.isArray()) {
+                    memberIds.forEach(id ->
+                            messagingTemplate.convertAndSend("/topic/user/" + id.asText() + "/rooms", notification)
+                    );
+                }
+                // ROOM_DELETED cũng push vào room topic để FE đang mở phòng biết mà đóng lại
+                if (RoomEventType.ROOM_DELETED.name().equals(eventType)) {
+                    messagingTemplate.convertAndSend("/topic/room/" + roomId + "/queue/rooms", notification);
+                }
+                return;
+            }
+
+            String roomId = root.get("roomId").asText();
+            String queue  = ROOM_QUEUE_MAP.get(eventType);
             if (queue == null) {
                 log.warn("No queue mapping for event type: {}", eventType);
                 return;
             }
-            String roomId = root.get("roomId").asText();
+
+            // Push tới room topic cho tất cả đang mở phòng
             messagingTemplate.convertAndSend("/topic/room/" + roomId + queue, payloadObj);
+
+            // MEMBER_ADDED: push tới user topic của member mới (chưa subscribe room)
+            if (MemberEventType.MEMBER_ADDED.name().equals(eventType)) {
+                Map<String, String> notification = Map.of("eventType", eventType, "roomId", roomId);
+                JsonNode addedIds = payload.get("memberIds");
+                if (addedIds != null && addedIds.isArray()) {
+                    addedIds.forEach(id ->
+                            messagingTemplate.convertAndSend("/topic/user/" + id.asText() + "/rooms", notification)
+                    );
+                }
+            }
+
+            // MEMBER_REMOVED: push tới user topic của người bị kick
+            if (MemberEventType.MEMBER_REMOVED.name().equals(eventType)) {
+                Map<String, String> notification = Map.of("eventType", eventType, "roomId", roomId);
+                JsonNode targetUserId = payload.get("targetUserId");
+                if (targetUserId != null) {
+                    messagingTemplate.convertAndSend("/topic/user/" + targetUserId.asText() + "/rooms", notification);
+                }
+            }
+
+            // MEMBER_LEFT: push tới user topic của người tự rời
+            if (MemberEventType.MEMBER_LEFT.name().equals(eventType)) {
+                Map<String, String> notification = Map.of("eventType", eventType, "roomId", roomId);
+                JsonNode userId = payload.get("userId");
+                if (userId != null) {
+                    messagingTemplate.convertAndSend("/topic/user/" + userId.asText() + "/rooms", notification);
+                }
+            }
 
         } catch (Exception e) {
             log.error("Error relaying Redis message to WebSocket", e);

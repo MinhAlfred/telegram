@@ -87,6 +87,8 @@ public class RoomServiceImpl implements  RoomService {
         Room room = createBaseRoom(request.name(), RoomType.GROUP, userId,count, userInfo.displayName());
         saveMembers(room.getId(), List.of(userId), true); // owner
         saveMembers(room.getId(), request.memberIds(), false); // members
+        List<String> allMemberIds = new ArrayList<>(request.memberIds());
+        allMemberIds.add(userId);
         publishRoomEvent(
                 room.getId(),
                 RoomEventType.ROOM_CREATED,
@@ -94,13 +96,14 @@ public class RoomServiceImpl implements  RoomService {
                         room.getId(),
                         request.name(),
                         request.avatar(),
-                        null,                               // DIRECT không có description
+                        request.description(),
                         room.getType().toString(),
                         room.getCreatedBy(),
                         room.getLastMessageContent(),
                         room.getMemberCount(),
-                        room.getLastMessageAt(),                                  // unreadCount — xem note bên dưới
-                        room.getCreatedAt()
+                        room.getLastMessageAt(),
+                        room.getCreatedAt(),
+                        allMemberIds
                 )
         );
         return RoomMapper.toGroupRoomResponse(room, userInfo,0);
@@ -223,14 +226,15 @@ public class RoomServiceImpl implements  RoomService {
         if(room.getType() != RoomType.DIRECT){
             validateOwnerAccess(userId, roomId);
         }
+        List<String> memberIds = roomMemberRepository.findByRoomId(roomId).stream()
+                .map(RoomMember::getUserId)
+                .toList();
         room.setActive(false);
         roomRepository.save(room);
         publishRoomEvent(
                 roomId,
                 RoomEventType.ROOM_DELETED,
-                new RoomDeletedPayload(
-                        roomId
-                )
+                new RoomDeletedPayload(roomId, memberIds)
         );
     }
 
