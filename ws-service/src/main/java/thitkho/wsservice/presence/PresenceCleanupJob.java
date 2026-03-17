@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.connection.StringRedisConnection;
 import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.RedisOperations;
+import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -32,13 +34,15 @@ public class PresenceCleanupJob {
                 .rangeByScore(PresenceService.ONLINE_ZSET, 0, staleScore);
 
         if (staleUsers == null || staleUsers.isEmpty()) return;
-        redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
-            StringRedisConnection stringRedisConn = (StringRedisConnection) connection;
-            for (String userId : staleUsers) {
-                stringRedisConn.set(PresenceService.LAST_SEEN_PREFIX + userId, String.valueOf(now));
-                stringRedisConn.zRem(PresenceService.ONLINE_ZSET, userId);
+        redisTemplate.executePipelined(new SessionCallback<>() {
+            @Override
+            public Object execute(RedisOperations operations) {
+                for (String userId : staleUsers) {
+                    operations.opsForValue().set(PresenceService.LAST_SEEN_PREFIX + userId, String.valueOf(now));
+                    operations.opsForZSet().remove(PresenceService.ONLINE_ZSET, userId);
+                }
+                return null;
             }
-            return null; // Bắt buộc return null theo docs của Spring Data Redis
         });
         for (String userId : staleUsers) {
             presenceEventPublisher.publishOffline(userId, now);

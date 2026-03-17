@@ -40,10 +40,13 @@ public class RedisMessageRelay implements MessageListener {
             String eventType = root.get("type").asText();
             JsonNode payload = root.get("payload");
 
+            // JsonNode → Object (Map) để Spring serialize đúng JSON content
+            Object payloadObj = objectMapper.treeToValue(payload, Object.class);
+
             // Presence events — route theo userId
             if (isPresenceEvent(eventType)) {
                 String userId = root.get("userId").asText();
-                messagingTemplate.convertAndSend("/topic/presence/" + userId, payload);
+                messagingTemplate.convertAndSend("/topic/presence/" + userId, payloadObj);
                 return;
             }
 
@@ -54,7 +57,7 @@ public class RedisMessageRelay implements MessageListener {
                 return;
             }
             String roomId = root.get("roomId").asText();
-            messagingTemplate.convertAndSend("/topic/room/" + roomId + queue, payload);
+            messagingTemplate.convertAndSend("/topic/room/" + roomId + queue, payloadObj);
 
         } catch (Exception e) {
             log.error("Error relaying Redis message to WebSocket", e);
