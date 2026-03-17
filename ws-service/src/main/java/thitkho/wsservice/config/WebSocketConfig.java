@@ -7,8 +7,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
-import org.springframework.messaging.converter.JacksonJsonMessageConverter;
-import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -19,7 +17,6 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 import org.springframework.web.socket.server.HandshakeInterceptor;
 import thitkho.wsservice.interceptor.StompAuthInterceptor;
 
-import java.util.List;
 import java.util.Map;
 
 @Configuration
@@ -38,12 +35,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         return scheduler;
     }
 
-    @Override
-    public boolean configureMessageConverters(List<MessageConverter> converters) {
-        JacksonJsonMessageConverter converter = new JacksonJsonMessageConverter();
-        converters.add(converter);
-        return false; // false = chỉ dùng converter trên, không thêm default
-    }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
