@@ -10,13 +10,12 @@ import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.stereotype.Component;
 import thitkho.wsservice.principal.StompPrincipal;
-import thitkho.wsservice.util.JwtUtil;
+
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
 public class StompAuthInterceptor implements ChannelInterceptor {
-
-    private final JwtUtil jwtUtil;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -27,21 +26,14 @@ public class StompAuthInterceptor implements ChannelInterceptor {
 
         // Chỉ validate khi CONNECT
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-            String token = accessor.getFirstNativeHeader("Authorization");
+            // Gateway đã validate JWT và inject X-User-Id → HandshakeInterceptor lưu vào session attributes
+            Map<String, Object> sessionAttrs = accessor.getSessionAttributes();
+            String userId = sessionAttrs != null ? (String) sessionAttrs.get("userId") : null;
 
-            if (token == null || !token.startsWith("Bearer ")) {
-                throw new MessageDeliveryException("Missing token");
+            if (userId == null) {
+                throw new MessageDeliveryException("Unauthorized");
             }
 
-            token = token.substring(7);
-
-            if (!jwtUtil.isValid(token)) {
-                throw new MessageDeliveryException("Invalid token");
-            }
-
-            String userId = jwtUtil.extractUserId(token);
-
-            // Set principal → dùng cho convertAndSendToUser
             accessor.setUser(new StompPrincipal(userId));
         }
 

@@ -8,4 +8,7 @@ public final class KafkaTopics {
 
     // Room Metadata: thông tin cơ bản phòng - không bao giờ mất
     public static final String ROOM_METADATA = "chat.room.metadata";
+
+    // Presence: user online/offline
+    public static final String USER_PRESENCE = "user.presence";
 }

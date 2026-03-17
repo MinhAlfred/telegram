@@ -36,18 +36,17 @@ public interface RoomRepository extends JpaRepository<Room, String> {
     Page<Room> findRoomsByUserId(@Param("userId") String userId, Pageable pageable);
 
     @Query("""
-    SELECT r FROM Room r
-    JOIN RoomMember rm ON rm.roomId = r.id
-    WHERE rm.userId = :userId
-    AND r.isActive = true
-    AND  r.lastMessageAt < :cursor
-    ORDER BY r.lastMessageAt DESC
-    LIMIT :limit
-    """)
+SELECT r FROM Room r
+JOIN RoomMember rm ON rm.roomId = r.id
+WHERE rm.userId = :userId
+AND r.isActive = true
+AND COALESCE(r.lastMessageAt, r.createdAt) < :cursor
+ORDER BY COALESCE(r.lastMessageAt, r.createdAt) DESC
+""")
     List<Room> findRoomsByUserIdWithCursor(
             @Param("userId") String userId,
             @Param("cursor") LocalDateTime cursor,
-            @Param("limit") int limit
+            Pageable pageable
     );
 
     @Modifying

@@ -20,3 +20,7 @@ jwt:
 
 server:
   port: 4002
+
+presence:
+  stale-threshold-ms: 30000   # score cũ hơn 30s → coi là offline (phải > STOMP heartbeat 20s)
+  cleanup-interval-ms: 20000  # chạy mỗi 20s
