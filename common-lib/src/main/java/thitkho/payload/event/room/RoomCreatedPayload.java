@@ -1,6 +1,7 @@
 package thitkho.payload.event.room;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record RoomCreatedPayload(
         String id,
@@ -9,9 +10,10 @@ public record RoomCreatedPayload(
         String description,
         String type,
         String createdBy,
-        String lastMessage,    // tin nhắn mới nhất
-        int memberCount,       // số lượng thành viên hiện tại
-        LocalDateTime lastMessageAt, // thời gian tin nhắn mới nhất
-        LocalDateTime createdAt
+        String lastMessage,
+        int memberCount,
+        LocalDateTime lastMessageAt,
+        LocalDateTime createdAt,
+        List<String> memberIds   // dùng để relay push đúng user
 ) {}
 

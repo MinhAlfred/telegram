@@ -25,7 +25,14 @@ spring:
               predicates:
                 - Path=/ws/**
               filters:
-                - name: AuthFilter  # validate JWT tr??c khi upgrade WebSocket
+                - name: AuthFilter
+
+            - id: presence-service
+              uri: http://localhost:4002
+              predicates:
+                - Path=/presence/**
+              filters:
+                - name: AuthFilter
 
 jwt:
   secret: youraccesstokensecretbase64encoded256bityouraccesstokensecretbase64encoded256bityouraccesstokensecretbase64encoded256bit

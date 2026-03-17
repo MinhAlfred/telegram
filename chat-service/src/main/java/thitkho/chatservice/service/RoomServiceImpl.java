@@ -71,7 +71,8 @@ public class RoomServiceImpl implements  RoomService {
                                     room.getLastMessageContent(),
                                     room.getMemberCount(),
                                     room.getLastMessageAt(),
-                                    room.getCreatedAt()
+                                    room.getCreatedAt(),
+                                    List.of(userId, targetUserId)
                             )
                     );
                     return RoomMapper.toDirectRoomResponse(room, targetUserInfo, 0, true);
