@@ -252,6 +252,14 @@ public class MessageServiceImpl implements MessageService {
                 .isForwarded(true)
                 .build();
         forwarded = messageRepository.save(forwarded);
+
+        Room targetRoom = roomRepository.findById(targetRoomId)
+                .orElseThrow(() -> new AppException(RoomErrorCode.ROOM_NOT_FOUND));
+        targetRoom.setLastMessageSenderId(userId);
+        targetRoom.setLastMessageContent(original.getContent());
+        targetRoom.setLastMessageAt(forwarded.getCreatedAt());
+        roomRepository.save(targetRoom);
+
         roomMemberRepository.incrementUnreadCount(targetRoomId, userId);
         UserInfoChatResponse senderInfo = userClient.getUserById(userId);
         publishMessageEvent(
