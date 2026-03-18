@@ -303,6 +303,8 @@ public class MessageServiceImpl implements MessageService {
         Optional<MessageReaction> existingOpt = messageReactionRepository
                 .findByMessageIdAndUserId(messageId, userId);
 
+        String previousEmoji = null;
+
         if (existingOpt.isPresent()) {
             MessageReaction existing = existingOpt.get();
 
@@ -312,8 +314,9 @@ public class MessageServiceImpl implements MessageService {
             }
 
             // TRƯỜNG HỢP ĐỔI ICON (ví dụ từ ❤️ sang 👍)
+            previousEmoji = existing.getEmoji();
             // - Giảm count icon cũ trong JSONB
-            messageRepository.decrementReactionCount(messageId, existing.getEmoji());
+            messageRepository.decrementReactionCount(messageId, previousEmoji);
             // - Cập nhật record cũ sang icon mới
             existing.setEmoji(newEmoji);
             messageReactionRepository.save(existing);
@@ -329,6 +332,15 @@ public class MessageServiceImpl implements MessageService {
 
         // 2. Tăng count icon mới trong JSONB
         messageRepository.incrementReactionCount(messageId, newEmoji);
+
+        // Tính summary post-action trong memory (tránh re-fetch trong cùng transaction)
+        Map<String, Long> updatedSummary = new HashMap<>(message.getReactionSummary());
+        if (previousEmoji != null) {
+            updatedSummary.merge(previousEmoji, -1L, Long::sum);
+            updatedSummary.remove(previousEmoji, 0L);
+        }
+        updatedSummary.merge(newEmoji, 1L, Long::sum);
+
         chatEventProducer.publish(
                 KafkaTopics.ROOM_EVENTS,
                 message.getRoomId(),
@@ -338,9 +350,10 @@ public class MessageServiceImpl implements MessageService {
                         new ReactionUpdatedPayload(
                                 message.getRoomId(),
                                 messageId,
-                                message.getReactionSummary(),
+                                updatedSummary,
                                 userId,
                                 newEmoji,
+                                previousEmoji,
                                 false
                         )
                 )
@@ -358,8 +371,14 @@ public class MessageServiceImpl implements MessageService {
             emoji= exist.get().getEmoji();
             messageReactionRepository.delete(exist.get());
             // Giảm count trong JSONB
-            messageRepository.decrementReactionCount(messageId, emoji);
             Message message = findMessageById(messageId);
+            messageRepository.decrementReactionCount(messageId, emoji);
+
+            // Tính summary post-action trong memory
+            Map<String, Long> updatedSummary = new HashMap<>(message.getReactionSummary());
+            updatedSummary.merge(emoji, -1L, Long::sum);
+            updatedSummary.remove(emoji, 0L);
+
             chatEventProducer.publish(
                     KafkaTopics.ROOM_EVENTS,
                     message.getRoomId(),
@@ -369,9 +388,10 @@ public class MessageServiceImpl implements MessageService {
                             new ReactionUpdatedPayload(
                                     message.getRoomId(),
                                     messageId,
-                                    message.getReactionSummary(),
+                                    updatedSummary,
                                     userId,
                                     emoji,
+                                    emoji,   // previousEmoji = emoji đang xóa
                                     true
                             )
                     )

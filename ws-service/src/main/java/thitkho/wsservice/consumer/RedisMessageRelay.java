@@ -54,7 +54,7 @@ public class RedisMessageRelay implements MessageListener {
             if (RoomEventType.ROOM_CREATED.name().equals(eventType)
                     || RoomEventType.ROOM_DELETED.name().equals(eventType)) {
                 String roomId = root.get("roomId").asText();
-                Map<String, String> notification = Map.of("eventType", eventType, "roomId", roomId);
+                Map<String, String> notification = Map.of("type", eventType, "roomId", roomId);
                 JsonNode memberIds = payload.get("memberIds");
                 if (memberIds != null && memberIds.isArray()) {
                     memberIds.forEach(id ->
@@ -75,12 +75,14 @@ public class RedisMessageRelay implements MessageListener {
                 return;
             }
 
-            // Push tới room topic cho tất cả đang mở phòng
-            messagingTemplate.convertAndSend("/topic/room/" + roomId + queue, payloadObj);
+            // Push tới room topic cho tất cả đang mở phòng — wrap payload với "type" để FE nhận biết
+            Object roomPayload = Map.of("type", eventType, "payload", payloadObj);
+            log.info("Relaying event to room topic: {}, payload: {}", roomId, payloadObj);
+            messagingTemplate.convertAndSend("/topic/room/" + roomId + queue, roomPayload);
 
             // MEMBER_ADDED: push tới user topic của member mới (chưa subscribe room)
             if (MemberEventType.MEMBER_ADDED.name().equals(eventType)) {
-                Map<String, String> notification = Map.of("eventType", eventType, "roomId", roomId);
+                Map<String, String> notification = Map.of("type", eventType, "roomId", roomId);
                 JsonNode addedIds = payload.get("memberIds");
                 if (addedIds != null && addedIds.isArray()) {
                     addedIds.forEach(id ->
@@ -91,7 +93,7 @@ public class RedisMessageRelay implements MessageListener {
 
             // MEMBER_REMOVED: push tới user topic của người bị kick
             if (MemberEventType.MEMBER_REMOVED.name().equals(eventType)) {
-                Map<String, String> notification = Map.of("eventType", eventType, "roomId", roomId);
+                Map<String, String> notification = Map.of("type", eventType, "roomId", roomId);
                 JsonNode targetUserId = payload.get("targetUserId");
                 if (targetUserId != null) {
                     messagingTemplate.convertAndSend("/topic/user/" + targetUserId.asText() + "/rooms", notification);
@@ -100,7 +102,7 @@ public class RedisMessageRelay implements MessageListener {
 
             // MEMBER_LEFT: push tới user topic của người tự rời
             if (MemberEventType.MEMBER_LEFT.name().equals(eventType)) {
-                Map<String, String> notification = Map.of("eventType", eventType, "roomId", roomId);
+                Map<String, String> notification = Map.of("type", eventType, "roomId", roomId);
                 JsonNode userId = payload.get("userId");
                 if (userId != null) {
                     messagingTemplate.convertAndSend("/topic/user/" + userId.asText() + "/rooms", notification);
