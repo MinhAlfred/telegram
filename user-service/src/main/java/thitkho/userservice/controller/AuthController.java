@@ -129,6 +129,11 @@ public class AuthController {
                 userService.getOnlineStatusByIds(userIds)));
     }
 
+    @GetMapping("/status/online")
+    public ResponseEntity<ApiResponse<List<String>>> getAllOnlineUsers() {
+        return ResponseEntity.ok(ApiResponse.success(userService.getAllOnlineUserIds()));
+    }
+
     // ==================== ADMIN ====================
 
     @GetMapping("/admin/users")

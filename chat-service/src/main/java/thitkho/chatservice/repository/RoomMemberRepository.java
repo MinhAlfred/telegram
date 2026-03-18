@@ -17,6 +17,7 @@ public interface RoomMemberRepository extends JpaRepository<RoomMember, String> 
     Page<RoomMember> findByUserId(String userId, Pageable pageable);
     Page<RoomMember> findByRoomId(String roomId, Pageable pageable);
     List<RoomMember> findByRoomId(String roomId);
+    List<RoomMember> findByUserId(String userId);
     Optional<RoomMember> findByRoomIdAndUserId(String roomId, String userId);
     boolean existsByRoomIdAndUserId(String roomId, String userId);
     List<RoomMember> findAllByRoomIdIn(List<String> roomIds);

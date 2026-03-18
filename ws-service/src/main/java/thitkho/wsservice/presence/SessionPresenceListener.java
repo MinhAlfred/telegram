@@ -6,8 +6,10 @@ import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
+import thitkho.wsservice.client.ChatClient;
 
 import java.security.Principal;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -16,6 +18,8 @@ public class SessionPresenceListener {
 
     private final PresenceService presenceService;
     private final PresenceEventPublisher presenceEventPublisher;
+    private final UserRoomMappingService userRoomMappingService;
+    private final ChatClient chatClient;
 
     @EventListener
     public void onConnected(SessionConnectedEvent event) {
@@ -25,8 +29,23 @@ public class SessionPresenceListener {
             log.warn("SessionConnectedEvent missing principal");
             return;
         }
+        log.info("User connected: {}", user.getName());
         String userId = user.getName();
+
+        // Load rooms từ chat-service để populate cache trước khi publish online event
+        loadRoomsIntoCache(userId);
+
         presenceService.markOnline(userId);
         presenceEventPublisher.publishOnline(userId);
+    }
+
+    private void loadRoomsIntoCache(String userId) {
+        try {
+            List<String> roomIds = chatClient.getRoomIdsByUserId(userId);
+            roomIds.forEach(roomId -> userRoomMappingService.addRoom(userId, roomId));
+            log.info("Loaded {} rooms into cache for userId={}", roomIds.size(), userId);
+        } catch (Exception e) {
+            log.error("Failed to load rooms for userId={}, presence broadcast may be incomplete", userId, e);
+        }
     }
 }

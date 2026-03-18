@@ -6,6 +6,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +31,11 @@ public class PresenceService {
     public Long getLastSeen(String userId) {
         String val = redisTemplate.opsForValue().get(LAST_SEEN_PREFIX + userId);
         return val != null ? Long.parseLong(val) : null;
+    }
+
+    public Set<String> getAllOnlineUserIds() {
+        Set<String> members = redisTemplate.opsForZSet().range(ONLINE_ZSET, 0, -1);
+        return members != null ? members : Collections.emptySet();
     }
 
     private long now() {

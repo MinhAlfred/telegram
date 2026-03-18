@@ -30,8 +30,11 @@ import thitkho.userservice.util.GoogleTokenVerifier;
 import thitkho.userservice.util.JwtUtils;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -176,14 +179,15 @@ public class UserServiceImpl implements UserService{
         userRepository.save(user);
     }
 
+    private static final String ONLINE_ZSET = "users:online";
+
     @Override
     public void setOnline(String userId) {
         User user = findUserById(userId);
         user.setOnlineStatus(OnlineStatus.ONLINE);
         userRepository.save(user);
 
-        // Cache vào Redis
-        redisTemplate.opsForValue().set("online:" + userId, "true");
+        redisTemplate.opsForZSet().add(ONLINE_ZSET, userId, Instant.now().toEpochMilli());
     }
 
     @Override
@@ -193,32 +197,34 @@ public class UserServiceImpl implements UserService{
         user.setLastSeen(LocalDateTime.now());
         userRepository.save(user);
 
-        // Xóa khỏi Redis
-        redisTemplate.delete("online:" + userId);
+        redisTemplate.opsForZSet().remove(ONLINE_ZSET, userId);
     }
 
     @Override
     public OnlineStatusResponse getOnlineStatus(String userId) {
-        // Check Redis trước cho nhanh
-        Boolean isOnline = redisTemplate.hasKey("online:" + userId);
+        boolean isOnline = redisTemplate.opsForZSet().score(ONLINE_ZSET, userId) != null;
         return OnlineStatusResponse.builder()
                 .userId(userId)
-                .isOnline(Boolean.TRUE.equals(isOnline))
+                .isOnline(isOnline)
                 .build();
     }
 
     @Override
     public List<OnlineStatusResponse> getOnlineStatusByIds(List<String> userIds) {
         return userIds.stream()
-                .filter(id -> {
-                    Boolean isOnline = redisTemplate.hasKey("online:" + id);
-                    return Boolean.TRUE.equals(isOnline);
-                })
+                .filter(id -> redisTemplate.opsForZSet().score(ONLINE_ZSET, id) != null)
                 .map(id -> OnlineStatusResponse.builder()
                         .userId(id)
                         .isOnline(true)
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<String> getAllOnlineUserIds() {
+        Set<String> members = redisTemplate.opsForZSet().range(ONLINE_ZSET, 0, -1);
+        log.info("Retrieved online user IDs from Redis: {}", members);
+        return members != null ? List.copyOf(members) : Collections.emptyList();
     }
 
     @Override

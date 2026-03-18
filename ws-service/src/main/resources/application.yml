@@ -24,3 +24,9 @@ server:
 presence:
   stale-threshold-ms: 30000   # score cũ hơn 30s → coi là offline (phải > STOMP heartbeat 20s)
   cleanup-interval-ms: 20000  # chạy mỗi 20s
+
+chat-service:
+  url: ${CHAT_SERVICE_URL:http://localhost:4000}
+
+internal:
+  secret: ${INTERNAL_SECRET:telegramsecretkey}

@@ -35,6 +35,7 @@ public interface UserService {
     void setOffline(String userId);
     OnlineStatusResponse getOnlineStatus(String userId);
     List<OnlineStatusResponse> getOnlineStatusByIds(List<String> userIds);
+    List<String> getAllOnlineUserIds();
 
     // Admin
     Page<UserResponse> getAllUsers(Pageable pageable);

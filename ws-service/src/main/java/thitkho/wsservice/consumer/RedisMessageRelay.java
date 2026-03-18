@@ -39,10 +39,7 @@ public class RedisMessageRelay implements MessageListener {
             JsonNode root    = objectMapper.readTree(message.getBody());
             String eventType = root.get("type").asText();
             JsonNode payload = root.get("payload");
-
-            // JsonNode → Object (Map) để Spring serialize đúng JSON content
             Object payloadObj = objectMapper.treeToValue(payload, Object.class);
-
             // Presence events — broadcast tới từng room mà user đang tham gia
             if (isPresenceEvent(eventType)) {
                 String userId = root.get("userId").asText();
@@ -58,8 +55,6 @@ public class RedisMessageRelay implements MessageListener {
                 }
                 return;
             }
-
-            // ROOM_CREATED / ROOM_DELETED — push tới từng member qua user topic
             if (RoomEventType.ROOM_CREATED.name().equals(eventType)
                     || RoomEventType.ROOM_DELETED.name().equals(eventType)) {
                 String roomId = root.get("roomId").asText();
@@ -70,7 +65,6 @@ public class RedisMessageRelay implements MessageListener {
                             messagingTemplate.convertAndSend("/topic/user/" + id.asText() + "/rooms", notification)
                     );
                 }
-                // ROOM_DELETED cũng push vào room topic để FE đang mở phòng biết mà đóng lại
                 if (RoomEventType.ROOM_DELETED.name().equals(eventType)) {
                     messagingTemplate.convertAndSend("/topic/room/" + roomId + "/queue/rooms", notification);
                 }
