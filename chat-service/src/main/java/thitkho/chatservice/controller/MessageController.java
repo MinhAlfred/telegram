@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import thitkho.chatservice.dto.request.AddReactionRequest;
 import thitkho.chatservice.dto.request.SendMessageRequest;
 import thitkho.chatservice.dto.response.MessageResponse;
@@ -24,6 +25,16 @@ public class MessageController {
             @RequestHeader("X-User-Id") String userId,
             @RequestBody SendMessageRequest request) {
         return ApiResponse.success(messageService.sendMessage(userId, request));
+    }
+
+    @PostMapping(value = "/files", consumes = "multipart/form-data")
+    @Operation(description = "Upload a file and send it as a message. File is uploaded to Cloudinary and stored as a FILE type message.")
+    public ApiResponse<MessageResponse> sendFileMessage(
+            @RequestHeader("X-User-Id") String userId,
+            @RequestParam String roomId,
+            @RequestParam MultipartFile file,
+            @RequestParam(required = false) String replyToId) {
+        return ApiResponse.success(messageService.sendFileMessage(userId, roomId, file, replyToId));
     }
 
     @GetMapping

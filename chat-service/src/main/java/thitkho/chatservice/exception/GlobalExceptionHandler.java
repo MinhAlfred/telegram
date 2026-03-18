@@ -6,6 +6,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import thitkho.exception.AppException;
+import thitkho.exception.InvalidFileException;
 import thitkho.payload.ApiResponse;
 
 import java.util.stream.Collectors;
@@ -30,6 +31,12 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining(", "));
 
         ApiResponse<Object> response = ApiResponse.error(400, "VALIDATION_FAILED", errors);
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(InvalidFileException.class)
+    public ResponseEntity<ApiResponse<Object>> handleInvalidFile(InvalidFileException ex) {
+        ApiResponse<Object> response = ApiResponse.error(400, "INVALID_FILE", ex.getMessage());
         return ResponseEntity.badRequest().body(response);
     }
 

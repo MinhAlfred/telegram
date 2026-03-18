@@ -15,6 +15,7 @@ public enum MessageErrorCode implements ErrorCode {
     CANNOT_EDIT_NON_TEXT("cannot_edit_non_text", "Only text messages can be edited", 400),
     NO_PERMISSION("no_permission", "User does not have permission to perform this action", 403),
     MESSAGE_REPLY_NOT_FOUND("message_reply_not_found", "Replied message not found", 404),
+    FILE_UPLOAD_FAILED("file_upload_failed", "Failed to upload file", 500),
     USER_NOT_MESSAGE_OWNER("user_not_message_owner", "User is not the owner of the message", 403);
 
     private final String code;

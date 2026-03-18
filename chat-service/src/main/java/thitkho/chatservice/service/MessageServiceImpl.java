@@ -2,8 +2,11 @@ package thitkho.chatservice.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import thitkho.chatservice.util.CloudinaryUtils;
 import thitkho.chatservice.client.UserClient;
 import thitkho.chatservice.dto.mapper.ChatMapper;
 import thitkho.chatservice.dto.request.AddReactionRequest;
@@ -30,6 +33,7 @@ import thitkho.payload.CursorPage;
 import thitkho.dto.response.UserInfoChatResponse;
 import thitkho.payload.event.message.*;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -44,6 +48,7 @@ public class MessageServiceImpl implements MessageService {
     private final MessageReactionRepository messageReactionRepository;
     private final ChatEventProducer chatEventProducer;
     private final RoomRepository roomRepository;
+    private final CloudinaryUtils cloudinaryUtils;
 
     @Override
     @Transactional
@@ -102,6 +107,75 @@ public class MessageServiceImpl implements MessageService {
                         message.getCreatedAt(),
                         message.getUpdatedAt()
                         ));
+        return ChatMapper.toMessageResponse(message, info.displayName(), info.avatar(), List.of(), replyPreview);
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse sendFileMessage(String userId, String roomId, MultipartFile file, String replyToId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new AppException(RoomErrorCode.ROOM_NOT_FOUND));
+        roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
+                .orElseThrow(() -> new AppException(RoomErrorCode.USER_NOT_IN_ROOM));
+
+        Pair<String, String> uploadResult;
+        try {
+            uploadResult = cloudinaryUtils.uploadMultipartFile(file, "/chat/" + roomId);
+        } catch (IOException e) {
+            throw new AppException(MessageErrorCode.FILE_UPLOAD_FAILED);
+        }
+
+        String mediaUrl = uploadResult.getFirst();
+        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
+
+        UserInfoChatResponse info = userClient.getUserById(userId);
+
+        Message message = new Message();
+        message.setRoomId(roomId);
+        message.setSenderId(userId);
+        message.setType(MessageType.FILE);
+        message.setMediaUrl(mediaUrl);
+        message.setFileName(originalFilename);
+        message.setFileSize(file.getSize());
+        message.setReplyToId(replyToId);
+        messageRepository.save(message);
+
+        ReplyPreview replyPreview = null;
+        if (replyToId != null) {
+            Message replyToMsg = messageRepository.findById(replyToId)
+                    .orElseThrow(() -> new AppException(MessageErrorCode.MESSAGE_REPLY_NOT_FOUND));
+            UserInfoChatResponse replyToSender = userClient.getUserById(replyToMsg.getSenderId());
+            replyPreview = ChatMapper.toReplyPreview(replyToMsg, replyToSender.displayName());
+        }
+
+        room.setLastMessageSenderId(userId);
+        room.setLastMessageContent("[FILE]");
+        room.setLastMessageAt(message.getCreatedAt());
+        roomRepository.save(room);
+        roomMemberRepository.incrementUnreadCount(roomId, userId);
+
+        publishMessageEvent(
+                KafkaTopics.ROOM_EVENTS,
+                roomId,
+                MessageEventType.MESSAGE_SENT,
+                new MessageSentPayload(
+                        message.getId(),
+                        message.getRoomId(),
+                        message.getSenderId(),
+                        info.displayName(),
+                        info.avatar(),
+                        message.getType().name(),
+                        message.getContent(),
+                        message.getMediaUrl(),
+                        message.getFileName(),
+                        message.getFileSize(),
+                        message.getReplyToId(),
+                        replyPreview,
+                        false,
+                        message.getCreatedAt(),
+                        message.getUpdatedAt()
+                ));
+
         return ChatMapper.toMessageResponse(message, info.displayName(), info.avatar(), List.of(), replyPreview);
     }
 

@@ -76,6 +76,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <artifactId>cloudinary-http44</artifactId>
+            <groupId>com.cloudinary</groupId>
+            <version>1.39.0</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation-test</artifactId>
             <scope>test</scope>
