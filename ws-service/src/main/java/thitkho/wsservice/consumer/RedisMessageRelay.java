@@ -43,10 +43,19 @@ public class RedisMessageRelay implements MessageListener {
             // JsonNode → Object (Map) để Spring serialize đúng JSON content
             Object payloadObj = objectMapper.treeToValue(payload, Object.class);
 
-            // Presence events — route theo userId
+            // Presence events — broadcast tới từng room mà user đang tham gia
             if (isPresenceEvent(eventType)) {
                 String userId = root.get("userId").asText();
-                messagingTemplate.convertAndSend("/topic/presence/" + userId, payloadObj);
+                JsonNode roomIds = root.get("roomIds");
+                if (roomIds != null && roomIds.isArray() && !roomIds.isEmpty()) {
+                    roomIds.forEach(roomId -> {
+                        String topic = "/topic/room/" + roomId.asText() + "/presence";
+                        log.info("Relaying presence event to room topic: {}, payload: {}", topic, payloadObj);
+                        messagingTemplate.convertAndSend(topic, payloadObj);
+                    });
+                } else {
+                    log.debug("Presence event for userId={} has no rooms, skipping broadcast", userId);
+                }
                 return;
             }
 
@@ -77,7 +86,7 @@ public class RedisMessageRelay implements MessageListener {
 
             // Push tới room topic cho tất cả đang mở phòng — wrap payload với "type" để FE nhận biết
             Object roomPayload = Map.of("type", eventType, "payload", payloadObj);
-            log.info("Relaying event to room topic: {}, payload: {}", roomId, payloadObj);
+//            log.info("Relaying event to room topic: {}, payload: {}", roomId, payloadObj);
             messagingTemplate.convertAndSend("/topic/room/" + roomId + queue, roomPayload);
 
             // MEMBER_ADDED: push tới user topic của member mới (chưa subscribe room)
