@@ -10,5 +10,4 @@ import java.util.List;
 public interface ChatClient {
     @GetMapping("/api/feign/rooms/user-room-ids")
     List<String> getRoomIdsByUserId (@RequestParam String userId);
-
 }

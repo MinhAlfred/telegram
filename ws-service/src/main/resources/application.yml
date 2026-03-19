@@ -30,3 +30,8 @@ chat-service:
 
 internal:
   secret: ${INTERNAL_SECRET:telegramsecretkey}
+
+logging:
+  level:
+    thitkho.wsservice.interceptor: DEBUG
+    thitkho.wsservice.config: DEBUG
