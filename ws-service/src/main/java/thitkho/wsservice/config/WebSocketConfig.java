@@ -1,7 +1,6 @@
 package thitkho.wsservice.config;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.server.ServerHttpRequest;
@@ -22,7 +21,6 @@ import java.util.Map;
 @Configuration
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
-@Slf4j
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final StompAuthInterceptor stompAuthInterceptor;
@@ -47,10 +45,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(stompAuthInterceptor);
-        registration.taskExecutor()
-                .corePoolSize(4)
-                .maxPoolSize(16)
-                .queueCapacity(200);
     }
 
     @Override
@@ -63,16 +57,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                                                    ServerHttpResponse response,
                                                    WebSocketHandler wsHandler,
                                                    Map<String, Object> attributes) {
-
                         if (request instanceof ServletServerHttpRequest servletRequest) {
                             String token = servletRequest.getServletRequest().getParameter("token");
-                            String origin = request.getHeaders().getOrigin();
-
                             if (token != null && !token.isBlank()) {
                                 attributes.put("token", token);
                             }
-                        } else {
-                            log.warn("WS Handshake: request is NOT ServletServerHttpRequest, type={}", request.getClass().getName());
                         }
                         return true;
                     }
@@ -81,10 +70,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     public void afterHandshake(ServerHttpRequest request,
                                                ServerHttpResponse response,
                                                WebSocketHandler wsHandler,
-                                               Exception exception) {
-
-                    }
-                })
-                .withSockJS();
+                                               Exception exception) {}
+                });
     }
 }
