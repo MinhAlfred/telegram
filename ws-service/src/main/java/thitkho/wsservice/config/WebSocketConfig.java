@@ -15,6 +15,7 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 import thitkho.wsservice.interceptor.StompAuthInterceptor;
+import thitkho.wsservice.interceptor.StompErrorHandler;
 
 import java.util.Map;
 
@@ -24,6 +25,7 @@ import java.util.Map;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final StompAuthInterceptor stompAuthInterceptor;
+    private final StompErrorHandler stompErrorHandler;
 
     @Bean
     public ThreadPoolTaskScheduler brokerTaskScheduler() {
@@ -49,6 +51,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        registry.setErrorHandler(stompErrorHandler);
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
                 .addInterceptors(new HandshakeInterceptor() {
