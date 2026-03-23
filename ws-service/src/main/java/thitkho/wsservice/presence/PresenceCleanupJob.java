@@ -3,16 +3,13 @@ package thitkho.wsservice.presence;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.connection.StringRedisConnection;
-import org.springframework.data.redis.core.RedisCallback;
-import org.springframework.data.redis.core.RedisOperations;
-import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.util.Set;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -24,30 +21,52 @@ public class PresenceCleanupJob {
 
     private final StringRedisTemplate redisTemplate;
     private final PresenceEventPublisher presenceEventPublisher;
+    private final UserRoomMappingService userRoomMappingService;
+
+    /**
+     * Lua script atomic: chỉ ZREM user nếu score của họ VẪN còn <= staleScore
+     * tại thời điểm thực thi — tránh race condition với reconnect.
+     * Trả về list userId đã bị remove thực sự.
+     */
+    private static final RedisScript<List> CLEANUP_SCRIPT = RedisScript.of("""
+            local staleScore = tonumber(ARGV[1])
+            local now        = ARGV[2]
+            local prefix     = ARGV[3]
+            local members    = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', staleScore)
+            local removed    = {}
+            for _, userId in ipairs(members) do
+                local score = redis.call('ZSCORE', KEYS[1], userId)
+                if score and tonumber(score) <= staleScore then
+                    redis.call('ZREM', KEYS[1], userId)
+                    redis.call('SET', prefix .. userId, now)
+                    table.insert(removed, userId)
+                end
+            end
+            return removed
+            """, List.class);
 
     @Scheduled(fixedDelayString = "${presence.cleanup-interval-ms:20000}")
     public void cleanup() {
         long now = Instant.now().toEpochMilli();
         long staleScore = now - staleThresholdMs;
 
-        Set<String> staleUsers = redisTemplate.opsForZSet()
-                .rangeByScore(PresenceService.ONLINE_ZSET, 0, staleScore);
+        @SuppressWarnings("unchecked")
+        List<String> removedUsers = (List<String>) redisTemplate.execute(
+                CLEANUP_SCRIPT,
+                List.of(PresenceService.ONLINE_ZSET),
+                String.valueOf(staleScore),
+                String.valueOf(now),
+                PresenceService.LAST_SEEN_PREFIX
+        );
 
-        if (staleUsers == null || staleUsers.isEmpty()) return;
-        redisTemplate.executePipelined(new SessionCallback<>() {
-            @Override
-            public Object execute(RedisOperations operations) {
-                for (String userId : staleUsers) {
-                    operations.opsForValue().set(PresenceService.LAST_SEEN_PREFIX + userId, String.valueOf(now));
-                    operations.opsForZSet().remove(PresenceService.ONLINE_ZSET, userId);
-                }
-                return null;
-            }
-        });
-        for (String userId : staleUsers) {
+        if (removedUsers == null || removedUsers.isEmpty()) return;
+        for (String userId : removedUsers) {
             presenceEventPublisher.publishOffline(userId, now);
         }
+        for (String userId : removedUsers) {
+            userRoomMappingService.clearRooms(userId);
+        }
 
-        log.info("Presence cleanup: removed {} stale user(s)", staleUsers.size());
+        log.info("Presence cleanup: removed {} stale user(s)", removedUsers.size());
     }
 }

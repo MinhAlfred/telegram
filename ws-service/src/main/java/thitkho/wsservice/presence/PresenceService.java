@@ -33,6 +33,15 @@ public class PresenceService {
         return val != null ? Long.parseLong(val) : null;
     }
 
+    public boolean markOffline(String userId) {
+        Long removed = redisTemplate.opsForZSet().remove(ONLINE_ZSET, (Object) userId);
+        if (removed != null && removed > 0) {
+            redisTemplate.opsForValue().set(LAST_SEEN_PREFIX + userId, String.valueOf(now()));
+            return true;
+        }
+        return false;
+    }
+
     public Set<String> getAllOnlineUserIds() {
         Set<String> members = redisTemplate.opsForZSet().range(ONLINE_ZSET, 0, -1);
         return members != null ? members : Collections.emptySet();

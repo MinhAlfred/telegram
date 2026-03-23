@@ -8,10 +8,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Duy trì cache Redis: user:rooms:{userId} → Set<roomId>
- * Dùng để biết khi user online/offline cần broadcast tới những room nào.
- */
 @Service
 @RequiredArgsConstructor
 public class UserRoomMappingService {
@@ -36,5 +32,9 @@ public class UserRoomMappingService {
     public Set<String> getRooms(String userId) {
         Set<String> rooms = redisTemplate.opsForSet().members(USER_ROOMS_PREFIX + userId);
         return rooms != null ? rooms : Collections.emptySet();
+    }
+
+    public void clearRooms(String userId) {
+        redisTemplate.delete(USER_ROOMS_PREFIX + userId);
     }
 }

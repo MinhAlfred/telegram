@@ -40,7 +40,6 @@ public class RedisMessageRelay implements MessageListener {
             String eventType = root.get("type").asText();
             JsonNode payload = root.get("payload");
             Object payloadObj = objectMapper.treeToValue(payload, Object.class);
-            // Presence events — broadcast tới từng room mà user đang tham gia
             if (isPresenceEvent(eventType)) {
                 String userId = root.get("userId").asText();
                 JsonNode roomIds = root.get("roomIds");
@@ -66,7 +65,7 @@ public class RedisMessageRelay implements MessageListener {
                     );
                 }
                 if (RoomEventType.ROOM_DELETED.name().equals(eventType)) {
-                    messagingTemplate.convertAndSend("/topic/room/" + roomId + "/queue/rooms", notification);
+                    messagingTemplate.convertAndSend("/topic/room/" + roomId + "/rooms", notification);
                 }
                 return;
             }
@@ -78,12 +77,9 @@ public class RedisMessageRelay implements MessageListener {
                 return;
             }
 
-            // Push tới room topic cho tất cả đang mở phòng — wrap payload với "type" để FE nhận biết
             Object roomPayload = Map.of("type", eventType, "payload", payloadObj);
 //            log.info("Relaying event to room topic: {}, payload: {}", roomId, payloadObj);
             messagingTemplate.convertAndSend("/topic/room/" + roomId + queue, roomPayload);
-
-            // MEMBER_ADDED: push tới user topic của member mới (chưa subscribe room)
             if (MemberEventType.MEMBER_ADDED.name().equals(eventType)) {
                 Map<String, String> notification = Map.of("type", eventType, "roomId", roomId);
                 JsonNode addedIds = payload.get("memberIds");

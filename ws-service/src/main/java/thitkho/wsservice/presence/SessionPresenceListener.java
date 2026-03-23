@@ -6,7 +6,10 @@ import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
+import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import thitkho.wsservice.client.ChatClient;
+
+import java.time.Instant;
 
 import java.security.Principal;
 import java.util.List;
@@ -37,6 +40,25 @@ public class SessionPresenceListener {
 
         presenceService.markOnline(userId);
         presenceEventPublisher.publishOnline(userId);
+    }
+
+    @EventListener
+    public void onDisconnected(SessionDisconnectEvent event) {
+        StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+        Principal user = accessor.getUser();
+        if (user == null) {
+            log.warn("SessionDisconnectEvent missing principal");
+            return;
+        }
+        String userId = user.getName();
+        log.info("User disconnected: {}", userId);
+
+        boolean wasOnline = presenceService.markOffline(userId);
+        if (wasOnline) {
+            long lastSeen = Instant.now().toEpochMilli();
+            presenceEventPublisher.publishOffline(userId, lastSeen);
+            userRoomMappingService.clearRooms(userId);
+        }
     }
 
     private void loadRoomsIntoCache(String userId) {
